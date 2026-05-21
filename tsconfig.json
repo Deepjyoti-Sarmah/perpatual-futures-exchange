@@ -1,0 +1,3 @@
+{
+  "extends": "@perp-v1-boilerplate/config/tsconfig.base.json"
+}
