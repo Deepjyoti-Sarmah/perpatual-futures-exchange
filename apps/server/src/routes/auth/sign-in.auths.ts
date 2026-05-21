@@ -39,7 +39,7 @@ signInRoute.post("/", async (req: Request, res: Response) => {
       });
     }
 
-    const token = await jwt.sign(
+    const token = jwt.sign(
       {
         userId: existingUser.id,
         role: existingUser.role,

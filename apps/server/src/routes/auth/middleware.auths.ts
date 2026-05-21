@@ -2,13 +2,13 @@ import { env } from "@perp-v1-boilerplate/env/index";
 import type { NextFunction, Request, Response } from "express";
 import jwt from "jsonwebtoken";
 
-export interface AuthRequest extends Request {
-  userId: string;
-  role: "admin" | "user";
+interface TokenPayload {
+  userId: number;
+  role: string;
 }
 
 export default function requireAuth(
-  req: AuthRequest,
+  req: Request,
   res: Response,
   next: NextFunction,
 ) {
@@ -23,13 +23,15 @@ export default function requireAuth(
 
     const token = authHeader.slice("Bearer".length);
 
-    const payload = jwt.verify(token, env.JWT_SECRET) as {
-      userId: string;
-      role: "user" | "admin";
-    };
+    const decode = jwt.verify(token, env.JWT_SECRET) as TokenPayload;
+    if (!decode) {
+      return res.status(400).json({
+        message: "Unauthorized tokens",
+      });
+    }
 
-    req.userId = payload.userId;
-    req.role = payload.role;
+    req.userId = decode.userId;
+    req.role = decode.role;
 
     next();
   } catch (error) {
