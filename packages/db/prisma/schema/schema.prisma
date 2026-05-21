@@ -14,14 +14,21 @@ model User {
   username String @unique
   password String
 
+  orders Order[]
+  fills  Fill[]
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
 
 model Market {
-  id     String @id @default(uuid())
+  id     String  @id @default(uuid())
   slug   String
-  symbok String
+  symbol String
+  image  String?
+
+  orders Order[]
+  fills  Fill[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -48,23 +55,49 @@ enum OrderStatus {
 model Order {
   id String @id @default(uuid())
 
-  market MarketType
-  type   OrderType
-  status OrderStatus
+  marketType MarketType
+  type       OrderType
+  status     OrderStatus
 
   qty      Int
   price    Int
   margin   Int
-  sleepage Int?
+  slippage Int?
   fillQty  Int
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  marketId String
+  market   Market @relation(fields: [marketId], references: [id], onDelete: Cascade)
+
+  makerFill Fill[] @relation("makerOrderId")
+  takerFill Fill[] @relation("takerOrderId")
+  fills     Fill[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
 
 model Fill {
-  id      String @id @default(uuid())
-  stockId String
-  qty     Int
-  price   Int
+  id    String @id @default(uuid())
+  qty   Int
+  price Int
+
+  makerId    String
+  makerOrder Order  @relation("makerOrderId", fields: [makerId], references: [id], onDelete: Cascade)
+  takerId    String
+  takerOrder Order  @relation("takerOrderId", fields: [takerId], references: [id], onDelete: Cascade)
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  marketId String
+  marker   Market @relation(fields: [marketId], references: [id], onDelete: Cascade)
+
+  orderId String
+  order   Order  @relation(fields: [orderId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }

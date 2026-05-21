@@ -1,17 +1,17 @@
-name: perp-v1-boilerplate
+name: perps-exchange
 
 services:
   postgres:
     image: postgres
-    container_name: perp-postgres
+    container_name: perps-exchange-postgres
     environment:
-      POSTGRES_DB: perp
+      POSTGRES_DB: perps-exchange
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: password
     ports:
       - "5432:5432"
     volumes:
-      - perp_postgres_data:/var/lib/postgresql
+      - perps-exchange_postgres_data:/var/lib/postgresql
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres"]
       interval: 10s
@@ -20,13 +20,13 @@ services:
     restart: unless-stopped
 
   redis:
-    image: redis-7-alpine
-    container_name: perp_redis
+    image: redis:7-alpine
+    container_name: perps-exchange-redis
     ports:
       - "6379:6379"
     command: redis-server --appendonly yes
     volumes:
-      - perps_redis_dada:/data
+      - perps-exchange_redis_data:/data
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 10s
@@ -35,5 +35,5 @@ services:
     restart: unless-stopped
 
 volumes:
-  perp_postgres_data:
-  perp_redis_data:
+  perps-exchange_postgres_data:
+  perps-exchange_redis_data:
