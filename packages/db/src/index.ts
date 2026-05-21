@@ -1,4 +1,4 @@
-import { env } from "@perp-v1-boilerplate/env/server";
+import { env } from "@perp-v1-boilerplate/env/index";
 import { PrismaPg } from "@prisma/adapter-pg";
 
 import { PrismaClient } from "../prisma/generated/client";

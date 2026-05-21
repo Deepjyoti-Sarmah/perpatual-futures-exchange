@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "exports": {
-    "./server": "./src/server.ts"
+    "./index": "./src/index.ts"
   },
   "dependencies": {
     "@t3-oss/env-core": "^0.13.1",
