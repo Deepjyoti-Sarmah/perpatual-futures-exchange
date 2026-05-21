@@ -3,15 +3,15 @@ name: perp-v1-boilerplate
 services:
   postgres:
     image: postgres
-    container_name: perp-v1-boilerplate-postgres
+    container_name: perp-postgres
     environment:
-      POSTGRES_DB: perp-v1-boilerplate
+      POSTGRES_DB: perp
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: password
     ports:
       - "5432:5432"
     volumes:
-      - perp-v1-boilerplate_postgres_data:/var/lib/postgresql
+      - perp_postgres_data:/var/lib/postgresql
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres"]
       interval: 10s
@@ -19,5 +19,21 @@ services:
       retries: 5
     restart: unless-stopped
 
+  redis:
+    image: redis-7-alpine
+    container_name: perp_redis
+    ports:
+      - "6379:6379"
+    command: redis-server --appendonly yes
+    volumes:
+      - perps_redis_dada:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
 volumes:
-  perp-v1-boilerplate_postgres_data:
+  perp_postgres_data:
+  perp_redis_data:
