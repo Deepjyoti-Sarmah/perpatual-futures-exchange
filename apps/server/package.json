@@ -12,16 +12,20 @@
   "dependencies": {
     "@perp-v1-boilerplate/db": "workspace:*",
     "@perp-v1-boilerplate/env": "workspace:*",
+    "bcryptjs": "^3.0.3",
     "cors": "^2.8.5",
     "dotenv": "catalog:",
     "express": "^5.1.0",
+    "jsonwebtoken": "^9.0.3",
     "zod": "catalog:"
   },
   "devDependencies": {
     "@perp-v1-boilerplate/config": "workspace:*",
+    "@perp-v1-boilerplate/commons": "workspace:*",
     "@types/bun": "catalog:",
     "@types/cors": "^2.8.17",
     "@types/express": "^5.0.1",
+    "@types/jsonwebtoken": "^9.0.10",
     "tsdown": "^0.21.9",
     "typescript": "catalog:"
   }
