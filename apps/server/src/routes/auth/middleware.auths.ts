@@ -3,7 +3,7 @@ import type { NextFunction, Request, Response } from "express";
 import jwt from "jsonwebtoken";
 
 interface TokenPayload {
-  userId: number;
+  userId: string;
   role: string;
 }
 
