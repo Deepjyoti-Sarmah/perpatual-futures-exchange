@@ -5,6 +5,7 @@ import { z } from "zod";
 export const env = createEnv({
   server: {
     REDIS_URL: z.string().min(1),
+    JWT_SECRET: z.string().min(1),
     DATABASE_URL: z.string().min(1),
     CORS_ORIGIN: z.url(),
     NODE_ENV: z
