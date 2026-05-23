@@ -21,6 +21,7 @@
   },
   "devDependencies": {
     "@perp-v1-boilerplate/config": "workspace:*",
+    "@perp-v1-boilerplate/redis": "workspace:*",
     "@perp-v1-boilerplate/commons": "workspace:*",
     "@types/bun": "catalog:",
     "@types/cors": "^2.8.17",

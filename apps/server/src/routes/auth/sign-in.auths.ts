@@ -4,6 +4,7 @@ import { env } from "@perp-v1-boilerplate/env/index";
 import bcrypt from "bcryptjs";
 import { Router, type Request, type Response } from "express";
 import jwt from "jsonwebtoken";
+import { sendToEngine } from "@perp-v1-boilerplate/redis/handlers";
 
 const signInRoute = Router();
 
