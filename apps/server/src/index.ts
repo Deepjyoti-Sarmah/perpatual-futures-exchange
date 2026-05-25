@@ -2,6 +2,8 @@ import { env } from "@perp-v1-boilerplate/env/index";
 import cors from "cors";
 import express from "express";
 import router from "./routes/index.routes";
+import { connectRedis } from "@perp-v1-boilerplate/redis";
+import { listenForEngineResponse } from "@perp-v1-boilerplate/redis/send-to-engine";
 
 const app = express();
 
@@ -20,6 +22,14 @@ app.get("/", (_req, res) => {
 
 app.use("/api/v1", router);
 
-app.listen(3000, () => {
-  console.log("Server is running on http://localhost:3000");
-});
+async function main() {
+  await connectRedis();
+
+  listenForEngineResponse();
+
+  app.listen(3000, () => {
+    console.log("Server is running on http://localhost:3000");
+  });
+}
+
+main().catch(console.error);

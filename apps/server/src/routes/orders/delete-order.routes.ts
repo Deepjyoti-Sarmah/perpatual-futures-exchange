@@ -53,7 +53,10 @@ deleteOrderRouter.post("/", async (req: Request, res: Response) => {
       marketType,
     };
 
-    const deleteOrder = await sendToEngine("cancel_order", { cancelOrder });
+    const deleteOrder = await sendToEngine("cancel_order", {
+      userId: existingUser.id,
+      cancelOrder,
+    });
 
     return res.status(200).json({
       message: "Order deleted successfully",

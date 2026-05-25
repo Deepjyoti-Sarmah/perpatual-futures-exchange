@@ -1,6 +1,7 @@
 import {
   type CreateOrderPayload,
   createOrderSchema,
+  type SeedUserResponse,
 } from "@perp-v1-boilerplate/commons";
 import prisma from "@perp-v1-boilerplate/db";
 import { sendToEngine } from "@perp-v1-boilerplate/redis/send-to-engine";
@@ -66,6 +67,7 @@ createOrderRouter.post("/", async (req: Request, res: Response) => {
     };
 
     const createOrder = await sendToEngine("create_order", {
+      userId: exitingUser.id,
       orderMessage,
     });
 

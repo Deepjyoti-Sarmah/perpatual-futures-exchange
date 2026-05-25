@@ -4,7 +4,7 @@ import type {
   EngineResponse,
 } from "@perp-v1-boilerplate/commons";
 import { env } from "@perp-v1-boilerplate/env/index";
-import { producerClient } from "../src";
+import { producerClient, subscriberClient } from "../src";
 
 const ENGINE_COMMAND_STREAM = "engine:command";
 const SERVER_ID = crypto.randomUUID();
@@ -58,4 +58,60 @@ export async function sendToEngine(
   });
 
   return responsePromise;
+}
+
+type XReadResult = Array<{
+  name: string;
+  messages: Array<{
+    id: string;
+    message: Record<string, string>;
+  }>;
+}>;
+
+function resolveEngineResponse(response: EngineResponse) {
+  const pending = pendingResponse.get(response.correlationId);
+  if (!pending) return;
+
+  clearTimeout(pending.timeout);
+  pendingResponse.delete(response.correlationId);
+  pending.resolve(response);
+}
+
+export async function listenForEngineResponse() {
+  console.log(`Listening for engine response on ${RESPONSE_STREAM}`);
+
+  let lastId = "$";
+
+  for (;;) {
+    try {
+      const raw = (await subscriberClient.xRead(
+        [
+          {
+            key: RESPONSE_STREAM,
+            id: lastId,
+          },
+        ],
+        { BLOCK: 0, COUNT: 1 },
+      )) as XReadResult | null;
+
+      if (!raw) continue;
+
+      for (const stream of raw) {
+        for (const { id, message } of stream.messages) {
+          lastId = id;
+
+          const response: EngineResponse = {
+            correlationId: message.correlationId!,
+            ok: message.ok === "true",
+            payload: message.payload ? JSON.parse(message.payload) : undefined,
+            error: message.error || undefined,
+          };
+
+          resolveEngineResponse(response);
+        }
+      }
+    } catch (error) {
+      console.error("Response listener error, retrying in 1s ...", error);
+    }
+  }
 }
