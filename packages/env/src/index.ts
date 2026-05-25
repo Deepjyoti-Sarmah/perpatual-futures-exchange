@@ -7,6 +7,8 @@ export const env = createEnv({
     REDIS_URL: z.string().min(1),
     JWT_SECRET: z.string().min(1),
     DATABASE_URL: z.string().min(1),
+    ENGINE_TIMEOUT: z.number().min(1),
+
     CORS_ORIGIN: z.url(),
     NODE_ENV: z
       .enum(["development", "production", "test"])

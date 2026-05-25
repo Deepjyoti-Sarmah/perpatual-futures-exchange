@@ -1,13 +1,13 @@
 import { env } from "@perp-v1-boilerplate/env/index";
 import { createClient } from "redis";
 
-const producerClient = createClient({
+export const producerClient = createClient({
   url: env.REDIS_URL,
 }).on("error", (error) => {
   console.error("Redis publisher error", error);
 });
 
-const subscriberClient = createClient({
+export const subscriberClient = createClient({
   url: env.REDIS_URL,
 }).on("error", (error) => {
   console.error("Redis subscriber error", error);

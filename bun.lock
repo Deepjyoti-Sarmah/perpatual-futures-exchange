@@ -19,9 +19,11 @@
     "apps/server": {
       "name": "server",
       "dependencies": {
+        "server": ".",
+        "@perp-v1-boilerplate/commons": "workspace:*",
         "@perp-v1-boilerplate/db": "workspace:*",
         "@perp-v1-boilerplate/env": "workspace:*",
-        "@types/jsonwebtoken": "^9.0.10",
+        "@perp-v1-boilerplate/redis": "workspace:*",
         "bcryptjs": "^3.0.3",
         "cors": "^2.8.5",
         "dotenv": "catalog:",
@@ -30,11 +32,11 @@
         "zod": "catalog:",
       },
       "devDependencies": {
-        "@perp-v1-boilerplate/commons": "workspace:*",
         "@perp-v1-boilerplate/config": "workspace:*",
         "@types/bun": "catalog:",
         "@types/cors": "^2.8.17",
         "@types/express": "^5.0.1",
+        "@types/jsonwebtoken": "^9.0.10",
         "tsdown": "^0.21.9",
         "typescript": "catalog:",
       },
@@ -105,6 +107,7 @@
         "zod": "catalog:",
       },
       "devDependencies": {
+        "@perp-v1-boilerplate/commons": "workspace:*",
         "@perp-v1-boilerplate/config": "workspace:*",
         "@types/pg": "^8.16.0",
         "@types/redis": "^4.0.11",

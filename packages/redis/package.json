@@ -2,12 +2,8 @@
   "name": "@perp-v1-boilerplate/redis",
   "type": "module",
   "exports": {
-    ".": {
-      "default": "./src/index.ts"
-    },
-    "./*": {
-      "default": "./src/*.ts"
-    }
+    ".": "./src/index.ts",
+    "./send-to-engine": "./handlers/send-to-engine.ts"
   },
   "scripts": {},
   "dependencies": {
@@ -20,6 +16,7 @@
     "zod": "catalog:"
   },
   "devDependencies": {
+    "@perp-v1-boilerplate/commons": "workspace:*",
     "@perp-v1-boilerplate/config": "workspace:*",
     "@types/pg": "^8.16.0",
     "@types/redis": "^4.0.11",

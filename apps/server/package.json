@@ -10,19 +10,20 @@
     "start": "bun run dist/index.mjs"
   },
   "dependencies": {
+    "@perp-v1-boilerplate/commons": "workspace:*",
     "@perp-v1-boilerplate/db": "workspace:*",
     "@perp-v1-boilerplate/env": "workspace:*",
+    "@perp-v1-boilerplate/redis": "workspace:*",
     "bcryptjs": "^3.0.3",
     "cors": "^2.8.5",
     "dotenv": "catalog:",
     "express": "^5.1.0",
     "jsonwebtoken": "^9.0.3",
+    "server": "workspace:*",
     "zod": "catalog:"
   },
   "devDependencies": {
     "@perp-v1-boilerplate/config": "workspace:*",
-    "@perp-v1-boilerplate/redis": "workspace:*",
-    "@perp-v1-boilerplate/commons": "workspace:*",
     "@types/bun": "catalog:",
     "@types/cors": "^2.8.17",
     "@types/express": "^5.0.1",

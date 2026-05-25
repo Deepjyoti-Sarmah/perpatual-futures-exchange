@@ -1,5 +1,9 @@
-import { marketSchema } from "@perp-v1-boilerplate/commons";
+import {
+  marketSchema,
+  type CreateOrderPayload,
+} from "@perp-v1-boilerplate/commons";
 import prisma from "@perp-v1-boilerplate/db";
+import { sendToEngine } from "@perp-v1-boilerplate/redis/send-to-engine";
 import { Router, type Request, type Response } from "express";
 
 const createMarketRouter = Router();
@@ -41,6 +45,20 @@ createMarketRouter.post("/market", async (req: Request, res: Response) => {
     }
 
     const { slug, symbol, image } = parsedData.data;
+
+    const marketId = crypto.randomUUID();
+
+    const enginRes = await sendToEngine("create_market", {
+      marketId: marketId,
+      symbol,
+      slug,
+    });
+
+    if (!enginRes.ok) {
+      return res.status(500).json({
+        message: "Error creating market",
+      });
+    }
 
     const market = await prisma.market.create({
       data: {

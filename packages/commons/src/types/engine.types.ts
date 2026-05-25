@@ -6,7 +6,8 @@ export type EngineCommandType =
   | "cancel_order"
   | "get_order"
   | "get_depth"
-  | "get_user_balance";
+  | "get_user_balance"
+  | "create_market";
 
 export interface EngineRequest {
   correlationId: string;
@@ -24,9 +25,9 @@ export interface EngineResponse {
 
 export interface CreateOrderPayload {
   userId: string;
-  market: string;
-  type: "LONG" | "SHORT";
-  orderType: "limit" | "market";
+  marketType: "SOL" | "ETH" | "BTC";
+  type: "long" | "short";
+  side: "limit" | "market";
   qty: number;
   price: number;
   margin: number;

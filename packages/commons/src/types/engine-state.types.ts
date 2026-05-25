@@ -15,12 +15,12 @@ export type Position = {
 
 export type Order = {
   orderId: string;
-  market: string;
+  market: "SOL" | "ETH" | "BTC";
   type: "LONG" | "SHORT";
   qty: number;
   margin: number;
-  orderType: "limit" | "market";
-  price: number;
+  side: "limit" | "market";
+  price?: number;
   status: "filled" | "cancelled" | "open" | "partially_filled";
   fillQty: number;
 };

@@ -58,15 +58,21 @@ enum OrderStatus {
   OPEN
 }
 
+enum SideType {
+  Market
+  Limit
+}
+
 model Order {
   id String @id @default(uuid())
 
   marketType MarketType
   type       OrderType
   status     OrderStatus
+  side       SideType
 
   qty      Int
-  price    Int
+  price    Int?
   margin   Int
   slippage Int?
   fillQty  Int

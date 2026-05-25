@@ -1,10 +1,14 @@
-import { signInSchema } from "@perp-v1-boilerplate/commons";
+import {
+  type Collateral,
+  type SeedUserResponse,
+  signInSchema,
+} from "@perp-v1-boilerplate/commons";
 import prisma from "@perp-v1-boilerplate/db";
 import { env } from "@perp-v1-boilerplate/env/index";
+import { sendToEngine } from "@perp-v1-boilerplate/redis/send-to-engine";
 import bcrypt from "bcryptjs";
-import { Router, type Request, type Response } from "express";
+import { type Request, type Response, Router } from "express";
 import jwt from "jsonwebtoken";
-import { sendToEngine } from "@perp-v1-boilerplate/redis/handlers";
 
 const signInRoute = Router();
 
@@ -37,6 +41,23 @@ signInRoute.post("/", async (req: Request, res: Response) => {
     if (!isValidPassword) {
       return res.status(400).json({
         message: "Invalid credentials",
+      });
+    }
+
+    const collateral: Collateral = {
+      available: 0,
+      locked: 0,
+    };
+
+    const engineRes = await sendToEngine("seed_user", {
+      userId: existingUser.id,
+      collateral: collateral,
+    } satisfies SeedUserResponse);
+
+    if (!engineRes.ok) {
+      return res.status(500).json({
+        message: "Failed to initalize user balance in engine",
+        error: engineRes.error,
       });
     }
 
