@@ -11,4 +11,10 @@ export const createOrderSchema = z.object({
   slippage: z.number().positive().optional(),
 });
 
+export const deleteOrderSchema = z.object({
+  orderId: z.string().nonempty(),
+  marketType: z.enum(["SOL", "ETH", "BTC"]),
+});
+
 export type createOrderSchemaRequest = z.infer<typeof createOrderSchema>;
+export type deleteOrderSchemaRequest = z.infer<typeof deleteOrderSchema>;

@@ -37,7 +37,7 @@ export interface CreateOrderPayload {
 export interface CancelOrderPayload {
   userId: string;
   orderId: string;
-  market: string;
+  marketType: "SOL" | "ETH" | "BTC";
 }
 
 export interface SeedUserResponse {
