@@ -43,7 +43,7 @@ export type Fill = {
   short: string;
 };
 
-export type Bid = {
+export type PriceLevel = {
   availableQty: number;
   openOrders: {
     userId: string;
@@ -55,8 +55,8 @@ export type Bid = {
 };
 
 export type Orderbook = {
-  bids: Record<string, Bid>; //price (string key) -> Bid
-  asks: Record<string, Bid>;
+  bids: Record<string, PriceLevel>; //price (string key) -> Bid/Ask (level)
+  asks: Record<string, PriceLevel>;
   lastTradedPrice: number;
   indexPrice: number;
 };

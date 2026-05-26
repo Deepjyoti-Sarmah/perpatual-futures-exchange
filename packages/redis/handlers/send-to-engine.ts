@@ -60,7 +60,7 @@ export async function sendToEngine(
   return responsePromise;
 }
 
-type XReadResult = Array<{
+type redisReadResponse = Array<{
   name: string;
   messages: Array<{
     id: string;
@@ -92,7 +92,7 @@ export async function listenForEngineResponse() {
           },
         ],
         { BLOCK: 0, COUNT: 1 },
-      )) as XReadResult | null;
+      )) as redisReadResponse;
 
       if (!raw) continue;
 
