@@ -3,7 +3,7 @@ import cors from "cors";
 import express from "express";
 import router from "./routes/index.routes";
 import { connectRedis } from "@perp-v1-boilerplate/redis";
-import { listenForEngineResponse } from "@perp-v1-boilerplate/redis/send-to-engine";
+import { listenForEngineResponse } from "./redis/start-server-listener";
 
 const app = express();
 

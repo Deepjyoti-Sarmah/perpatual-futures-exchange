@@ -1,9 +1,10 @@
+import type { EngineResponse } from "@perp-v1-boilerplate/commons";
 import { env } from "@perp-v1-boilerplate/env/index";
-import { createClient } from "@redis/client";
+import { createClient } from "redis";
 
-const ENGINE_COMMAND_STREAM = "engine:command";
-const ENGINE_GROUP = "engine-workers";
-const CONSUMER_ID = `engine-${crypto.randomUUID()}`;
+export const ENGINE_COMMAND_STREAM = "engine:command";
+export const ENGINE_GROUP = "engine-workers";
+export const CONSUMER_ID = `engine-${crypto.randomUUID()}`;
 
 export const engineRedisClinet = createClient({ url: env.REDIS_URL }).on(
   "error",
@@ -23,17 +24,21 @@ export async function connectEngineRedis() {
   console.log("Engine Redis connected");
 }
 
-type CommandProcessor = {
-  type: string;
-  payload: Record<string, unknown>;
-};
+export async function sendEngineResponse(
+  responseStream: string,
+  response: EngineResponse,
+) {
+  await engineRedisClinet.xAdd(responseStream, "*", {
+    correlationId: response.correlationId,
+    ok: String(response.ok),
+    payload: JSON.stringify(response.payload ?? null),
+    error: response.error ?? "",
+  });
+}
 
-type redisGroupReadResponse = Array<{
-  name: string;
-  messages: Array<{
-    id: string;
-    payload: Record<string, string>;
-  }>;
-}>;
-
-export async function startEngineListener(processCommand: CommandProcessor) {}
+// 12 LPA --> dhone
+// 17.5 LPA --> aparmeet
+// 15 LPA --> kholi
+// 15-16 LPA --> danda
+// 20 LPA --> sahil
+// 20 - 25 LPA --> kholi
