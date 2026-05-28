@@ -1,6 +1,6 @@
+import type { Collateral } from "@perp-v1-boilerplate/commons";
 import type { HandleResult } from "@/handlers/processCommand";
 import { users } from "@/store/engine-store";
-import type { Collateral } from "@perp-v1-boilerplate/commons";
 
 export function onRamp(payload: {
   userId: string;
@@ -19,5 +19,5 @@ export function onRamp(payload: {
     orders: [],
   });
 
-  return {ok: true, payload: users.get(userId)}
+  return { ok: true, payload: users.get(userId) };
 }
