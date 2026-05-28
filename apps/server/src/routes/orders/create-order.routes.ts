@@ -1,8 +1,4 @@
-import {
-  type CreateOrderPayload,
-  createOrderSchema,
-  type SeedUserResponse,
-} from "@perp-v1-boilerplate/commons";
+import { createOrderSchema } from "@perp-v1-boilerplate/commons";
 import prisma from "@perp-v1-boilerplate/db";
 import { sendToEngine } from "@perp-v1-boilerplate/redis/send-to-engine";
 import { type Request, type Response, Router } from "express";
@@ -45,7 +41,6 @@ createOrderRouter.post("/", async (req: Request, res: Response) => {
         error: parsedData.error.message,
       });
     }
-
     const { price, qty, type, side, marketType, margin, slippage } =
       parsedData.data;
 
@@ -55,7 +50,7 @@ createOrderRouter.post("/", async (req: Request, res: Response) => {
       });
     }
 
-    const orderMessage: CreateOrderPayload = {
+    const createOrder = await sendToEngine("create_order", {
       userId: exitingUser.id,
       marketType,
       side,
@@ -64,11 +59,6 @@ createOrderRouter.post("/", async (req: Request, res: Response) => {
       qty,
       margin,
       slippage,
-    };
-
-    const createOrder = await sendToEngine("create_order", {
-      userId: exitingUser.id,
-      orderMessage,
     });
 
     return res.status(200).json({

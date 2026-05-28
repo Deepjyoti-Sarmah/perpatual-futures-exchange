@@ -1,7 +1,4 @@
-import {
-  type CancelOrderPayload,
-  deleteOrderSchema,
-} from "@perp-v1-boilerplate/commons";
+import { deleteOrderSchema } from "@perp-v1-boilerplate/commons";
 import prisma from "@perp-v1-boilerplate/db";
 import { sendToEngine } from "@perp-v1-boilerplate/redis/send-to-engine";
 import { type Request, type Response, Router } from "express";
@@ -47,15 +44,10 @@ deleteOrderRouter.post("/", async (req: Request, res: Response) => {
 
     const { orderId, marketType } = parsedData.data;
 
-    const cancelOrder: CancelOrderPayload = {
+    const deleteOrder = await sendToEngine("cancel_order", {
       userId: existingUser.id,
       orderId,
       marketType,
-    };
-
-    const deleteOrder = await sendToEngine("cancel_order", {
-      userId: existingUser.id,
-      cancelOrder,
     });
 
     return res.status(200).json({

@@ -1,8 +1,4 @@
-import {
-  type Collateral,
-  type SeedUserResponse,
-  signInSchema,
-} from "@perp-v1-boilerplate/commons";
+import { type Collateral, signInSchema } from "@perp-v1-boilerplate/commons";
 import prisma from "@perp-v1-boilerplate/db";
 import { env } from "@perp-v1-boilerplate/env/index";
 import { sendToEngine } from "@perp-v1-boilerplate/redis/send-to-engine";
@@ -51,8 +47,9 @@ signInRoute.post("/", async (req: Request, res: Response) => {
 
     const engineRes = await sendToEngine("seed_user", {
       userId: existingUser.id,
+      username: existingUser.username,
       collateral: collateral,
-    } satisfies SeedUserResponse);
+    });
 
     if (!engineRes.ok) {
       return res.status(500).json({

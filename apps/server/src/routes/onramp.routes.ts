@@ -1,7 +1,4 @@
-import type {
-  Collateral,
-  SeedUserResponse,
-} from "@perp-v1-boilerplate/commons";
+import type { Collateral } from "@perp-v1-boilerplate/commons";
 import prisma from "@perp-v1-boilerplate/db";
 import { sendToEngine } from "@perp-v1-boilerplate/redis/send-to-engine";
 import { type Request, type Response, Router } from "express";
@@ -41,10 +38,11 @@ onRampRouter.post("/", async (req: Request, res: Response) => {
       locked: 0,
     };
 
-    const engineRes = await sendToEngine("seed_user", {
+    const engineRes = await sendToEngine("on_ramp", {
       userId: existingUser.id,
+      username: existingUser.username,
       collateral: collateral,
-    } satisfies SeedUserResponse);
+    });
 
     if (!engineRes.ok) {
       return res.status(500).json({

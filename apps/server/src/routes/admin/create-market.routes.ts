@@ -1,7 +1,4 @@
-import {
-  marketSchema,
-  type CreateOrderPayload,
-} from "@perp-v1-boilerplate/commons";
+import { marketSchema } from "@perp-v1-boilerplate/commons";
 import prisma from "@perp-v1-boilerplate/db";
 import { sendToEngine } from "@perp-v1-boilerplate/redis/send-to-engine";
 import { Router, type Request, type Response } from "express";
