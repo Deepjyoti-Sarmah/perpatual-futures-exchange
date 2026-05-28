@@ -36,9 +36,9 @@ export async function sendEngineResponse(
   });
 }
 
-// 12 LPA --> dhone
-// 17.5 LPA --> aparmeet
+// 12 LPA --> dhoni
+// 17.5 LPA --> harbajan
 // 15 LPA --> kholi
-// 15-16 LPA --> danda
-// 20 LPA --> sahil
-// 20 - 25 LPA --> kholi
+// 15-16 LPA --> deenda
+// 20 LPA --> sachin
+// 20 - 25 LPA --> bhumbra

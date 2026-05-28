@@ -4,7 +4,7 @@ import type {
   EngineResponse,
 } from "@perp-v1-boilerplate/commons";
 import { env } from "@perp-v1-boilerplate/env/index";
-import { producerClient, subscriberClient } from "../src";
+import { producerClient } from "../src";
 
 export const ENGINE_COMMAND_STREAM = "engine:command";
 export const SERVER_ID = crypto.randomUUID();

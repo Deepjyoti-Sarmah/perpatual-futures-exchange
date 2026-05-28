@@ -2,6 +2,7 @@ import type { Collateral } from "./engine-state.types";
 
 export type EngineCommandType =
   | "seed_user"
+  | "on_ramp"
   | "create_order"
   | "cancel_order"
   | "get_order"

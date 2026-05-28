@@ -16,10 +16,10 @@
         "typescript": "catalog:",
       },
     },
-    "apps/server": {
-      "name": "server",
+    "apps/engine": {
+      "name": "engine",
       "dependencies": {
-        "server": ".",
+        "engine": ".",
         "@perp-v1-boilerplate/commons": "workspace:*",
         "@perp-v1-boilerplate/db": "workspace:*",
         "@perp-v1-boilerplate/env": "workspace:*",
@@ -29,6 +29,29 @@
         "dotenv": "catalog:",
         "express": "^5.1.0",
         "jsonwebtoken": "^9.0.3",
+        "server": "workspace:*",
+        "zod": "catalog:",
+      },
+      "devDependencies": {
+        "@perp-v1-boilerplate/config": "workspace:*",
+        "@types/bun": "catalog:",
+        "tsdown": "^0.21.9",
+        "typescript": "catalog:",
+      },
+    },
+    "apps/server": {
+      "name": "server",
+      "dependencies": {
+        "@perp-v1-boilerplate/commons": "workspace:*",
+        "@perp-v1-boilerplate/db": "workspace:*",
+        "@perp-v1-boilerplate/env": "workspace:*",
+        "@perp-v1-boilerplate/redis": "workspace:*",
+        "bcryptjs": "^3.0.3",
+        "cors": "^2.8.5",
+        "dotenv": "catalog:",
+        "express": "^5.1.0",
+        "jsonwebtoken": "^9.0.3",
+        "server": "workspace:*",
         "zod": "catalog:",
       },
       "devDependencies": {
@@ -414,6 +437,8 @@
     "empathic": ["empathic@2.0.1", "", {}, "sha512-YGRs8knHhKHVShLkFET/rWAU8kmHbOV5LwN938RHI0pljAJ1Gf6SzXsSmRaEzcXTtOOmVqJ5+WtQPL5uigY50Q=="],
 
     "encodeurl": ["encodeurl@2.0.0", "", {}, "sha512-Q0n9HRi4m6JuGIV1eFlmvJB7ZEVxu93IrMyiMsGC0lrMJMWzRgx6WGquyfQgZVb31vhGgXnfmPNNXmxnOkRBrg=="],
+
+    "engine": ["engine@workspace:apps/engine"],
 
     "env-paths": ["env-paths@3.0.0", "", {}, "sha512-dtJUTepzMW3Lm/NPxRf3wP4642UWhjL2sQxc+ym2YMj1m/H2zDNQOlezafzkHwn6sMstjHTwG6iQQsctDW/b1A=="],
 

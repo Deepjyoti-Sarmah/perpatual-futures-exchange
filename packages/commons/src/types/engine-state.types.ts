@@ -27,7 +27,7 @@ export type Order = {
 
 export type EngineUser = {
   userId: string;
-  username: string;
+  username?: string;
   collateral: Collateral;
   positions: Position[];
   orders: Order[];
