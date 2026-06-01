@@ -26,6 +26,10 @@ export function recalculatePnl(userId: string) {
      *   pnL = (averagePrice - markPrice) * qty
      *   e.g. sold 10 SOL at $100, now $80  → (100 - 80)  * 10 = +$200
      */
-     
+    if (positon.type === "LONG") {
+      positon.pnL = (markPrice - positon.averagePrice) * positon.qty;
+    } else {
+      positon.pnL = (positon.averagePrice - markPrice) * positon.qty;
+    }
   }
 }
