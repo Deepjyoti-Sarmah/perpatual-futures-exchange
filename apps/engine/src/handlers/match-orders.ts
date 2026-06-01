@@ -9,7 +9,7 @@ type MatchOrdersParams = {
   side: "limit" | "market";
   price: number;
   qty: number;
-  leverage: number;
+  margin: number;
   hasSlippageGuard: boolean;
   maxAcceptablePrice: number;
   orderBook: Orderbook;
@@ -29,7 +29,7 @@ export function matchOrders(params: MatchOrdersParams): MatchOrderResult {
     side,
     price,
     qty,
-    leverage,
+    margin,
     hasSlippageGuard,
     maxAcceptablePrice,
     orderBook,
@@ -74,7 +74,7 @@ export function matchOrders(params: MatchOrdersParams): MatchOrderResult {
         );
 
         // margin consumed by taker for the fill
-        const fillMargin = (askPrice * matchQty) / leverage;
+        const fillMargin = (matchQty / qty) * margin;
 
         // Record the fill, long=taker(we), short=maker(them)
         fills.push({
@@ -95,28 +95,57 @@ export function matchOrders(params: MatchOrdersParams): MatchOrderResult {
           (p) => p.market === marketType && p.type === "SHORT",
         );
 
-        const makerLeverage = makerPos
-          ? (makerPos.averagePrice * makerPos.qty) / makerPos.margin
-          : leverage; // if  maker has no positon yet
+        const makerFillMargin = makerPos
+          ? (matchQty / makerPos.qty) * makerPos.margin
+          : fillMargin;
 
         // update both sides
         updatePosition({
           userId: openOrder.userId,
           marketType,
           type: "SHORT",
-          price: askPrice,
-          matchQty,
-          leverage: makerLeverage,
+          fillPrice: askPrice,
+          fillQty: matchQty,
+          fillMargin: makerFillMargin,
         });
         updatePosition({
           userId,
           marketType,
           type: "LONG",
-          price: askPrice,
-          matchQty,
-          leverage,
+          fillPrice: askPrice,
+          fillQty: matchQty,
+          fillMargin,
         });
+
+        // Release the position of makers locked margin
+        if (makerUser) {
+          makerUser.collateral.locked -= makerFillMargin;
+        }
+
+        // update tracking counter
+        openOrder.filledQty += matchQty;
+        level.availableQty -= matchQty;
+        remainingQty -= matchQty;
+        usedMargin += fillMargin;
+
+        // update lastTradedPrice to recalPNL
+        orderBook.lastTradedPrice = askPrice;
+
+        //Remove maker order from level
+        if (openOrder.filledQty >= openOrder.qty) {
+          level.openOrders = level.openOrders.filter(
+            (o) => o.orderId !== openOrder.orderId,
+          );
+        }
+      }
+
+      // Remove the price level if no qty left
+      if (level.availableQty <= 0 || level.openOrders.length === 0) {
+        delete orderBook.asks[askPrice.toString()];
       }
     }
+    // Short
+  } else {
+    
   }
 }
