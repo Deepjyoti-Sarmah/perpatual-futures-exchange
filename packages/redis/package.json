@@ -3,7 +3,8 @@
   "type": "module",
   "exports": {
     ".": "./src/index.ts",
-    "./send-to-engine": "./handlers/send-to-engine.ts"
+    "./send-to-engine": "./handlers/send-to-engine.ts",
+    "./engine-listener": "./handlers/engine-listener.ts"
   },
   "scripts": {},
   "dependencies": {

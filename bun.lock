@@ -19,7 +19,6 @@
     "apps/engine": {
       "name": "engine",
       "dependencies": {
-        "engine": ".",
         "@perp-v1-boilerplate/commons": "workspace:*",
         "@perp-v1-boilerplate/db": "workspace:*",
         "@perp-v1-boilerplate/env": "workspace:*",
@@ -27,6 +26,7 @@
         "bcryptjs": "^3.0.3",
         "cors": "^2.8.5",
         "dotenv": "catalog:",
+        "engine": ".",
         "express": "^5.1.0",
         "jsonwebtoken": "^9.0.3",
         "server": "workspace:*",

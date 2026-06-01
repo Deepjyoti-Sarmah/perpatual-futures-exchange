@@ -1,4 +1,4 @@
-import { connectEngineRedis } from "../../../packages/redis/handlers/engine-listener";
+import { connectEngineRedis } from "@perp-v1-boilerplate/redis/engine-listener";
 import { startEngineListener } from "./redis/start-engine-listener";
 
 async function main() {

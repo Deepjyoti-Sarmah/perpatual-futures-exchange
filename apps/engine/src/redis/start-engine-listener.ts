@@ -4,7 +4,7 @@ import {
   ENGINE_GROUP,
   engineRedisClinet,
   sendEngineResponse,
-} from "../../../../packages/redis/handlers/engine-listener";
+} from "@perp-v1-boilerplate/redis/engine-listener";
 import { processCommand } from "../handlers/processCommand";
 
 type redisGroupReadResponse = Array<{
