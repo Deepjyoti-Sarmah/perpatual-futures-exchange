@@ -1,8 +1,9 @@
 import { users } from "@/store/engine-store";
 import { recalculatePnl } from "./calculate-Pnl";
+import type { EngineUser } from "@perp-v1-boilerplate/commons";
 
 type UpdatePositionParams = {
-  userId: string;
+  user: EngineUser;
   marketType: "SOL" | "ETH" | "BTC";
   type: "LONG" | "SHORT";
   fillPrice: number;
@@ -11,12 +12,7 @@ type UpdatePositionParams = {
 };
 
 export function updatePosition(params: UpdatePositionParams) {
-  const { userId, marketType, type, fillPrice, fillQty, fillMargin } = params;
-
-  const user = users.get(userId);
-  if (!user) {
-    return;
-  }
+  const { user, marketType, type, fillPrice, fillQty, fillMargin } = params;
 
   let position = user.positions.find(
     (p) => p.market === marketType && p.type === type,
@@ -54,5 +50,5 @@ export function updatePosition(params: UpdatePositionParams) {
     position.liquidationPrice = liqPrice;
   }
 
-  recalculatePnl(userId);
+  recalculatePnl(user);
 }

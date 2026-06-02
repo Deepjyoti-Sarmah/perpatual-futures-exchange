@@ -1,7 +1,8 @@
+import type { Order } from "@perp-v1-boilerplate/commons";
+import { randomUUIDv7 } from "bun";
 import { getOrderBook } from "@/handlers/get-orderbook";
 import { users } from "@/store/engine-store";
-import type { Order } from "@perp-v1-boilerplate/commons";
-import { randomUUIDv5, randomUUIDv7 } from "bun";
+import { marketMatch } from "@/engines/market-matching";
 
 export function createOrder(payload: {
   userId: string;
@@ -17,7 +18,6 @@ export function createOrder(payload: {
   const { userId, marketType, type, price, qty, side, margin, slippage } =
     payload;
 
-  const user = getUserById(userId);
   const user = users.get(userId);
   if (!user) {
     return { ok: false, payload: "User doesnot exists" };
@@ -57,7 +57,7 @@ export function createOrder(payload: {
   }
 
   // 5 - slippage (market order)
-  const hasSlipppageGuard = side === "market" && slippage > 0;
+  const hasSlippageGuard = side === "market" && slippage > 0;
   const slippageFactor = slippage / 100;
 
   const maxAcceptablePrice =
@@ -92,4 +92,25 @@ export function createOrder(payload: {
   };
 
   // 9 - Match against order book
+  const { fills, usedMargin, remainingQty } = marketMatch({
+    user,
+    marketType,
+    type,
+    side,
+    price,
+    qty,
+    margin,
+    hasSlippageGuard,
+    maxAcceptablePrice,
+    orderBook,
+  });
+
+  // 10 - Resolve final status
+  const filledQty = qty - remainingQty;
+  let releasedMargin = 0;
+  let cancelledQty = 0;
+
+  if (remainingQty === 0) {
+    // fully filled
+  }
 }

@@ -1,14 +1,11 @@
-import { orderBooks, users } from "@/store/engine-store";
+import type { EngineUser } from "@perp-v1-boilerplate/commons";
+import { orderBooks } from "@/store/engine-store";
 
-export function recalculatePnl(userId: string) {
-  const user = users.get(userId);
-  if (!user) {
-    return;
-  }
-
+export function recalculatePnl(user: EngineUser) {
   for (const positon of user.positions) {
     // Get current mark price
     const orderBook = orderBooks[positon.market];
+
     const markPrice = orderBook?.lastTradedPrice || orderBook?.indexPrice;
 
     if (!markPrice || markPrice <= 0) {
