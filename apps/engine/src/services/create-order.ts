@@ -3,6 +3,7 @@ import { randomUUIDv7 } from "bun";
 import { getOrderBook } from "@/handlers/get-orderbook";
 import { users } from "@/store/engine-store";
 import { marketMatch } from "@/engines/market-matching";
+import { restInOrderBook } from "@/handlers/rest-in-orderbook";
 
 export function createOrder(payload: {
   userId: string;
@@ -112,5 +113,73 @@ export function createOrder(payload: {
 
   if (remainingQty === 0) {
     // fully filled
+    order.status = "filled";
+    releasedMargin = margin - usedMargin;
+    user.collateral.locked -= releasedMargin;
+    user.collateral.available += releasedMargin;
+  } else if (filledQty > 0) {
+    // partially filled
+    order.status = "partially_filled";
+
+    if (side === "market") {
+      // market orders never rest
+      cancelledQty = remainingQty;
+      releasedMargin = margin - usedMargin;
+      user.collateral.locked -= releasedMargin;
+      user.collateral.available += releasedMargin;
+    } else {
+      // limit orders rest remaining qty in the orderbook
+      restInOrderBook(orderBook, orderId, userId, type, price, remainingQty);
+    }
+  } else {
+    // Nothing filled
+    if (side === "market") {
+      order.status = "cancelled";
+      cancelledQty = qty;
+      releasedMargin = margin;
+      user.collateral.locked -= margin;
+      user.collateral.available += margin;
+    } else {
+      order.status = "open";
+      restInOrderBook(orderBook, orderId, userId, type, price, remainingQty);
+    }
   }
+
+  order.fillQty = filledQty;
+  user.orders.push(order);
+
+  // 11 Build reason string
+  let reason: string | undefined;
+
+  if (order.status === "cancelled") {
+    if (hasSlippageGuard) {
+      reason = "no fills within slippage tolerance";
+    } else {
+      reason = "no matching orders";
+    }
+  } else if (order.status === "partially_filled" && side === "market") {
+    if (hasSlippageGuard) {
+      reason = "partial fiil, remaing exceeded slippage tolerance";
+    } else {
+      reason = "partial fill, remaining calcelled";
+    }
+  }
+
+  // 12 return result
+  return {
+    ok: true,
+    payload: {
+      orderId,
+      status: order.status,
+      reason,
+      fills,
+      filledQty,
+      remainingQty,
+      cancelledQty,
+      collateral: {
+        available: user.collateral.available,
+        locked: user.collateral.locked,
+      },
+    },
+  };
 }
