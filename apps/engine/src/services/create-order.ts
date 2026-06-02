@@ -7,9 +7,9 @@ export function createOrder(payload: {
   userId: string;
   marketType: "SOL" | "ETH" | "BTC";
   type: "long" | "short";
+  side: "market" | "limit";
   price: number;
   qty: number;
-  side: "market" | "limit";
   margin: number;
   slippage: number;
 }) {
@@ -17,6 +17,7 @@ export function createOrder(payload: {
   const { userId, marketType, type, price, qty, side, margin, slippage } =
     payload;
 
+  const user = getUserById(userId);
   const user = users.get(userId);
   if (!user) {
     return { ok: false, payload: "User doesnot exists" };
@@ -91,5 +92,4 @@ export function createOrder(payload: {
   };
 
   // 9 - Match against order book
-  
 }
