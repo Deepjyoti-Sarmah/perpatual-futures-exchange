@@ -1,1 +1,23 @@
-export function getUserBalance(payload: unknown) {}
+import type { HandleResult } from "@/handlers/processCommand";
+import { users } from "@/store/engine-store";
+
+export function getUserBalance(payload: { userId: string }): HandleResult {
+  const { userId } = payload;
+
+  const user = users.get(userId);
+
+  if (!user) {
+    return { ok: false, error: "User doesnot exists" };
+  }
+
+  return {
+    ok: true,
+    payload: {
+      userId: user.userId,
+      collateral: {
+        available: user.collateral.available,
+        locked: user.collateral.locked,
+      },
+    },
+  };
+}
