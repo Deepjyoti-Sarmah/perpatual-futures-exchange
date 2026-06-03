@@ -4,6 +4,7 @@ import { getOrderBook } from "@/handlers/get-orderbook";
 import { users } from "@/store/engine-store";
 import { marketMatch } from "@/engines/market-matching";
 import { restInOrderBook } from "@/handlers/rest-in-orderbook";
+import type { HandleResult } from "@/handlers/processCommand";
 
 export function createOrder(payload: {
   userId: string;
@@ -14,7 +15,7 @@ export function createOrder(payload: {
   qty: number;
   margin: number;
   slippage: number;
-}) {
+}): HandleResult {
   //1- validate user
   const { userId, marketType, type, price, qty, side, margin, slippage } =
     payload;

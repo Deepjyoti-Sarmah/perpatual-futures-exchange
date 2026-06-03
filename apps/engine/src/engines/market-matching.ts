@@ -121,6 +121,25 @@ export function marketMatch(params: MatchOrdersParams): MatchOrderResult {
 
           // Release the position of makers locked margin
           makerUser.collateral.locked -= makerFillMargin;
+
+          const makerOrder = makerUser.orders.find(
+            (o) => o.orderId === openOrder.orderId,
+          );
+
+          if (makerOrder) {
+            makerOrder.fillQty = Math.min(
+              makerOrder.qty,
+              makerOrder.fillQty + matchQty,
+            );
+
+            if (makerOrder.fillQty >= makerOrder.qty) {
+              makerOrder.status = "filled";
+            } else if (makerOrder.fillQty > 0) {
+              makerOrder.status = "partially_filled";
+            } else {
+              makerOrder.status = "open";
+            }
+          }
         }
 
         // update tracking counter
@@ -215,6 +234,25 @@ export function marketMatch(params: MatchOrdersParams): MatchOrderResult {
 
           // releasee the position of maker locked margin
           makerUser.collateral.locked -= makerFillMargin;
+
+          const makerOrder = makerUser.orders.find(
+            (o) => o.orderId === openOrder.orderId,
+          );
+
+          if (makerOrder) {
+            makerOrder.fillQty = Math.min(
+              makerOrder.qty,
+              makerOrder.fillQty + matchQty,
+            );
+
+            if (makerOrder.fillQty >= makerOrder.qty) {
+              makerOrder.status = "filled";
+            } else if (makerOrder.fillQty > 0) {
+              makerOrder.status = "partially_filled";
+            } else {
+              makerOrder.status = "open";
+            }
+          }
         }
 
         openOrder.filledQty += matchQty;
