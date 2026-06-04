@@ -7,6 +7,7 @@ export function getOrderBook(symbol: string) {
       asks: {},
       lastTradedPrice: 0,
       indexPrice: 0,
+      markPrice: 0,
     };
   }
 

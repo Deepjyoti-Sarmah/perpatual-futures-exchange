@@ -1,3 +1,4 @@
+import { updateMarketPrice } from "@/services/update-market-price";
 import { cancelOrder } from "../services/cancel-order";
 import { createMarket } from "../services/create-market";
 import { createOrder } from "../services/create-order";
@@ -28,9 +29,11 @@ export async function processCommand(
     case "get_user_balance":
       return getUserBalance(payload as any);
     case "create_order":
-      return await createOrder(payload as any);
+      return createOrder(payload as any);
     case "cancel_order":
       return cancelOrder(payload as any);
+    case "update_market_price":
+      return updateMarketPrice(payload as any);
     default:
       return { ok: false, error: `Unknown command: ${type}` };
   }

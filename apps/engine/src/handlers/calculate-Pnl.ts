@@ -6,7 +6,10 @@ export function recalculatePnl(user: EngineUser) {
     // Get current mark price
     const orderBook = orderBooks[positon.market];
 
-    const markPrice = orderBook?.lastTradedPrice || orderBook?.indexPrice;
+    const markPrice =
+      orderBook?.markPrice ||
+      orderBook?.lastTradedPrice ||
+      orderBook?.indexPrice;
 
     if (!markPrice || markPrice <= 0) {
       continue;

@@ -8,7 +8,8 @@ export type EngineCommandType =
   | "get_order"
   | "get_depth"
   | "get_user_balance"
-  | "create_market";
+  | "create_market"
+  | "update_market_price";
 
 export interface EngineRequest {
   correlationId: string;
@@ -39,6 +40,12 @@ export interface CancelOrderPayload {
   userId: string;
   orderId: string;
   marketType: "SOL" | "ETH" | "BTC";
+}
+
+export interface UpdateMarketPricePayload {
+  marketType: "SOL" | "ETH" | "BTC";
+  indexPrice: number;
+  markPrice: number;
 }
 
 export interface SeedUserResponse {

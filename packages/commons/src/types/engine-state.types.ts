@@ -59,6 +59,7 @@ export type Orderbook = {
   asks: Record<string, PriceLevel>;
   lastTradedPrice: number;
   indexPrice: number;
+  markPrice: number;
 };
 
 export type Orderbooks = Record<string, Orderbook>;

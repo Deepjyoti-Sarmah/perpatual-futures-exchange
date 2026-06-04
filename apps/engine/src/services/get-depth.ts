@@ -7,6 +7,7 @@ export function getDepth(payload: {
   const { marketType } = payload;
 
   const orderBook = orderBooks[marketType];
+
   if (!orderBook) {
     return { ok: false, error: "Orderbook not found" };
   }
@@ -30,6 +31,7 @@ export function getDepth(payload: {
       asks,
       lastTradePrice: orderBook.lastTradedPrice,
       indexPrice: orderBook.indexPrice,
+      markPrice: orderBook.markPrice,
     },
   };
 }

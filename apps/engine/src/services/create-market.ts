@@ -13,6 +13,7 @@ export function createMarket(payload: { symbol: string }): HandleResult {
     asks: {},
     lastTradedPrice: 0,
     indexPrice: 0,
+    markPrice: 0,
   };
 
   return { ok: true, payload: { symbol } };
