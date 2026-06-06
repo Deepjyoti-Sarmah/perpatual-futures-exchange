@@ -9,7 +9,8 @@ export type EngineCommandType =
   | "get_depth"
   | "get_user_balance"
   | "create_market"
-  | "update_market_price";
+  | "update_market_price"
+  | "liquidate_position";
 
 export interface EngineRequest {
   correlationId: string;
@@ -48,6 +49,12 @@ export interface UpdateMarketPricePayload {
   markPrice: number;
 }
 
+export interface LiquidatePositionPayload {
+  userId: string;
+  marketType: "SOL" | "ETH" | "BTC";
+  positionType: "LONG" | "SHORT";
+}
+
 export interface SeedUserResponse {
   userId: string;
   collateral: Collateral;
@@ -59,4 +66,5 @@ export interface GetDepthResponse {
   asks: Record<string, number>;
   lastTradedPrice: number;
   indexPrice: number;
+  markPrice: number;
 }

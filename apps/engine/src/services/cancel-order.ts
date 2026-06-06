@@ -17,6 +17,10 @@ export function cancelOrder(payload: {
   //2 find order
   const order = user.orders.find((o) => o.orderId === orderId);
 
+  if (!order) {
+    return { ok: false, error: "Order does not exists" };
+  }
+
   // 3 validate maarket
   if (order?.market !== marketType) {
     return { ok: false, error: "Order does not belong to this market" };
@@ -25,6 +29,10 @@ export function cancelOrder(payload: {
   // 4 only open / partially filled limit order
   if (order.side !== "limit") {
     return { ok: false, error: "Only limit orders can be cancelled" };
+  }
+
+  if (order.status !== "open" && order.status !== "partially_filled") {
+    return { ok: false, error: "Oder is not cancelled" };
   }
 
   if (order.price == null) {
