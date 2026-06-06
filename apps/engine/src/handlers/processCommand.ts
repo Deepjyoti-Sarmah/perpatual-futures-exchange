@@ -7,6 +7,7 @@ import { getDepth } from "../services/get-depth";
 import { getUserBalance } from "../services/get-user-balance";
 import { onRamp } from "../services/on-ramp";
 import { seedUser } from "../services/seed-user";
+import { settleFunding } from "@/services/settle-funding";
 
 export type HandleResult = {
   ok: boolean;
@@ -37,6 +38,8 @@ export async function processCommand(
       return updateMarketPrice(payload as any);
     case "liquidate_position":
       return liquidatePosition(payload as any);
+    case "settle_funding":
+      return settleFunding(payload as any);
     default:
       return { ok: false, error: `Unknown command: ${type}` };
   }

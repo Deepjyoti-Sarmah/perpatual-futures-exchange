@@ -10,7 +10,8 @@ export type EngineCommandType =
   | "get_user_balance"
   | "create_market"
   | "update_market_price"
-  | "liquidate_position";
+  | "liquidate_position"
+  | "settle_funding";
 
 export interface EngineRequest {
   correlationId: string;
@@ -55,6 +56,10 @@ export interface LiquidatePositionPayload {
   positionType: "LONG" | "SHORT";
 }
 
+export interface SettleFundingPayload {
+  marketType: "SOL" | "ETH" | "BTC";
+}
+
 export interface SeedUserResponse {
   userId: string;
   collateral: Collateral;
@@ -67,4 +72,7 @@ export interface GetDepthResponse {
   lastTradedPrice: number;
   indexPrice: number;
   markPrice: number;
+  fundingRate: number;
+  lastFundingTime: number;
+  nextFundingTime: number;
 }

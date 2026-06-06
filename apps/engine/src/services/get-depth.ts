@@ -32,6 +32,10 @@ export function getDepth(payload: {
       lastTradePrice: orderBook.lastTradedPrice,
       indexPrice: orderBook.indexPrice,
       markPrice: orderBook.markPrice,
+      fundingRate: orderBook.fundingRate,
+      lastFundingTime: orderBook.lastFundingTime,
+      nextFundingTime: orderBook.nextFundingTime,
     },
   };
 }
+

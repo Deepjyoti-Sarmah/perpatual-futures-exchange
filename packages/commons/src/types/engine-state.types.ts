@@ -60,6 +60,9 @@ export type Orderbook = {
   lastTradedPrice: number;
   indexPrice: number;
   markPrice: number;
+  fundingRate: number;
+  lastFundingTime: number;
+  nextFundingTime: number;
 };
 
 export type Orderbooks = Record<string, Orderbook>;

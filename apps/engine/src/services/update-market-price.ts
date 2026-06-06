@@ -4,6 +4,8 @@ import { getOrderBook } from "@/handlers/get-orderbook";
 import type { HandleResult } from "@/handlers/processCommand";
 import { users } from "@/store/engine-store";
 import { liquidatePosition } from "./liquidation-position";
+import { calculateFundingRate } from "@/handlers/create-funding-rate";
+import { settleFunding } from "./settle-funding";
 
 export function updateMarketPrice(payload: {
   marketType: "SOL" | "ETH" | "BTC";
@@ -20,6 +22,7 @@ export function updateMarketPrice(payload: {
 
   orderBook.indexPrice = indexPrice;
   orderBook.markPrice = markPrice;
+  orderBook.fundingRate = calculateFundingRate(markPrice, indexPrice);
 
   const liquidationResults: unknown[] = [];
 
@@ -61,6 +64,12 @@ export function updateMarketPrice(payload: {
     }
   }
 
+  let fundingSettlement: ReturnType<typeof settleFunding> | null = null;
+
+  if (Date.now() >= orderBook.nextFundingTime) {
+    fundingSettlement = settleFunding({ marketType });
+  }
+
   return {
     ok: true,
     payload: {
@@ -68,6 +77,7 @@ export function updateMarketPrice(payload: {
       indexPrice: orderBook.indexPrice,
       markPrice: orderBook.markPrice,
       liquidationResults,
+      fundingSettlement,
     },
   };
 }
