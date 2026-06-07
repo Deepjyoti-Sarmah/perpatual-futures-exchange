@@ -1,10 +1,10 @@
 import { subscriberClient } from "@perp-v1-boilerplate/redis";
 import { ENGINE_EVENT_STREAM } from "@perp-v1-boilerplate/redis/engine-events";
-import type { EngineEventType } from "./types";
-import { handleOrderCreated } from "./handlers/order-create";
-import { handleOrderCancelled } from "./handlers/order-cancelled";
 import { handleFillCreated } from "./handlers/fill-created";
 import { handleLiquidationExecuted } from "./handlers/liquidation-executed";
+import { handleOrderCancelled } from "./handlers/order-cancelled";
+import { handleOrderCreated } from "./handlers/order-create";
+import type { EngineEventType } from "./types";
 
 const DB_WRITER_GROUP = "db-writer-group";
 const DB_WRITER_CONSUMER = `db-writer-${crypto.randomUUID()}`;
@@ -67,34 +67,30 @@ async function processMessage(entry: RedisStreamEntry) {
   }
 }
 
+const retryCounts = new Map<string, number>();
+
 async function handleWithRetry(
   entry: RedisStreamEntry,
 ): Promise<"ack" | "nack"> {
   try {
     await processMessage(entry);
+    retryCounts.delete(entry.id);
     return "ack";
   } catch (err) {
-    const pending = await subscriberClient.xPending(
-      ENGINE_EVENT_STREAM,
-      DB_WRITER_GROUP,
-      { start: entry.id, end: entry.id, count: 1 },
-    );
+    const attempts = (retryCounts.get(entry.id) ?? 0) + 1;
+    retryCounts.set(entry.id, attempts);
 
-    const deliveryCount =
-      Array.isArray(pending) && pending.length > 0
-        ? ((pending[0] as { deliveryCount?: number })?.deliveryCount ?? 1)
-        : 1;
-
-    if (deliveryCount >= MAX_RETRIES) {
+    if (attempts >= MAX_RETRIES) {
       console.error(
-        `Dead-lettering ${entry.id} after ${deliveryCount} attempts:`,
+        `Dead-lettering ${entry.id} after ${attempts} attempts:`,
         err,
       );
+      retryCounts.delete(entry.id);
       return "ack";
     }
 
     console.warn(
-      `Message ${entry.id} failed (attempt ${deliveryCount}/${MAX_RETRIES}):`,
+      `Message ${entry.id} failed (attempt ${attempts}/${MAX_RETRIES}):`,
       (err as Error).message,
     );
     return "nack";
