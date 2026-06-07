@@ -1,5 +1,5 @@
 import prisma from "@perp-v1-boilerplate/db";
-import type { OrderCreatedPayload } from "src/types";
+import type { OrderCreatedPayload } from "../types";
 import { mapOrderStatus, mapOrderType, mapSide } from "./map-order";
 
 export async function handleOrderCreated(
@@ -33,7 +33,7 @@ export async function handleOrderCreated(
       type: mapOrderType(type),
       side: mapSide(side),
       status: mapOrderStatus(status),
-      qty,
+      qty: qty,
       price: price ?? null,
       margin,
       fillQty,

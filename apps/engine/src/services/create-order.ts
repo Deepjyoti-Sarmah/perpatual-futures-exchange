@@ -204,9 +204,19 @@ export function createOrder(payload: {
   }).catch(console.error);
 
   for (const fill of fills) {
+    const makerUser = users.get(fill.maker);
+    const makerOrder = makerUser?.orders.find(
+      (o) =>
+        o.market === fill.market &&
+        (o.status === "open" ||
+          o.status === "partially_filled" ||
+          o.status === "filled"),
+    );
+
     void emitEngineEvent("fill_created", {
       ...fill,
       takerOrderId: orderId,
+      makerOrderId: makerOrder?.orderId ?? "",
     }).catch(console.error);
   }
 

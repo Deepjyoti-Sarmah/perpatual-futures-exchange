@@ -36,6 +36,8 @@ export type FillCreatedPayload = {
   price: number;
   long: string;
   short: string;
+  makerOrderId: string;
+  takerOrderId: string;
 };
 
 export type LiquidationExecutedPayload = {
