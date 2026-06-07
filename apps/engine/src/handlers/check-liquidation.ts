@@ -1,10 +1,11 @@
 import type { EngineUser, Position } from "@perp-v1-boilerplate/commons";
 import { orderBooks } from "@/store/engine-store";
+import { MAINTENANCE_MARGIN_RATE } from "@/constants/risk";
 
 export function checkLiquidation(
   user: EngineUser,
   position: Position,
-  maintenanceMarginRate = 0.005,
+  maintenanceMarginRate = MAINTENANCE_MARGIN_RATE,
 ) {
   const orderBook = orderBooks[position.market];
   const markPrice =

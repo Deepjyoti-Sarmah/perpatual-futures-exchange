@@ -1,5 +1,6 @@
 import type { EngineUser } from "@perp-v1-boilerplate/commons";
 import { recalculatePnl } from "./calculate-Pnl";
+import { MAINTENANCE_MARGIN_RATE } from "@/constants/risk";
 
 type ReducePositionParams = {
   user: EngineUser;
@@ -21,7 +22,6 @@ export function reducePosition(params: ReducePositionParams) {
   }
 
   const position = user.positions[positionIndex];
-
   if (!position) {
     return { ok: false, error: "Position not found" };
   }
@@ -54,8 +54,7 @@ export function reducePosition(params: ReducePositionParams) {
       ? (closePrice - position.averagePrice) * closeQty
       : (position.averagePrice - closePrice) * closeQty;
 
-  user.collateral.locked -= releasedMargin;
-  user.collateral.available += releasedMargin + realizedPnl;
+  user.wallet.available += releasedMargin + realizedPnl;
 
   const remainingQty = position.qty - closeQty;
 
@@ -71,16 +70,12 @@ export function reducePosition(params: ReducePositionParams) {
       type === "LONG"
         ? position.averagePrice -
         remainingMargin / remainingQty +
-        position.averagePrice * 0.005
+        position.averagePrice * MAINTENANCE_MARGIN_RATE
         : position.averagePrice +
         remainingMargin / remainingQty -
-        position.averagePrice * 0.005;
+        position.averagePrice * MAINTENANCE_MARGIN_RATE;
 
     position.liquidationPrice = newLiquidationPrice;
-  }
-
-  if (user.collateral.locked < 0) {
-    user.collateral.locked = 0;
   }
 
   recalculatePnl(user);
@@ -96,8 +91,7 @@ export function reducePosition(params: ReducePositionParams) {
       releasedMargin,
       realizedPnl,
       collateral: {
-        available: user.collateral.available,
-        locked: user.collateral.locked,
+        available: user.wallet.available,
       },
       remainingPosition:
         user.positions.find(

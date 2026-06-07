@@ -7,6 +7,7 @@ export function restInOrderBook(
   type: "long" | "short",
   price: number,
   qty: number,
+  remainingMargin: number,
 ) {
   const priceKey = price.toString();
   const bookSide = type === "long" ? "bids" : "asks";
@@ -22,5 +23,6 @@ export function restInOrderBook(
     filledQty: 0,
     orderId,
     createdAt: new Date(),
+    remainingMargin,
   });
 }

@@ -1,4 +1,4 @@
-import { users } from "@/store/engine-store";
+import { MAINTENANCE_MARGIN_RATE } from "@/constants/risk";
 import { recalculatePnl } from "./calculate-Pnl";
 import type { EngineUser } from "@perp-v1-boilerplate/commons";
 
@@ -21,8 +21,10 @@ export function updatePosition(params: UpdatePositionParams) {
   if (!position) {
     const liqPrice =
       type === "LONG"
-        ? fillPrice - fillMargin / fillQty + fillPrice * 0.005
-        : fillPrice + fillMargin / fillQty - fillPrice * 0.005;
+        ? fillPrice - fillMargin / fillQty + fillPrice * MAINTENANCE_MARGIN_RATE
+        : fillPrice +
+        fillMargin / fillQty -
+        fillPrice * MAINTENANCE_MARGIN_RATE;
 
     user.positions.push({
       market: marketType,
@@ -41,8 +43,12 @@ export function updatePosition(params: UpdatePositionParams) {
 
     const liqPrice =
       type === "LONG"
-        ? newAvgPrice - newMargin / totalQty + newAvgPrice * 0.005
-        : newAvgPrice + newMargin / totalQty - newAvgPrice * 0.005;
+        ? newAvgPrice -
+        newMargin / totalQty +
+        newAvgPrice * MAINTENANCE_MARGIN_RATE
+        : newAvgPrice +
+        newMargin / totalQty -
+        newAvgPrice * MAINTENANCE_MARGIN_RATE;
 
     position.averagePrice = newAvgPrice;
     position.qty = totalQty;
