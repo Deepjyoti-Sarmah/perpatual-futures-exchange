@@ -8,16 +8,19 @@ import type { HandleResult } from "@/handlers/processCommand";
 import { restInOrderBook } from "@/handlers/rest-in-orderbook";
 import { users } from "@/store/engine-store";
 
-export function createOrder(payload: {
-  userId: string;
-  marketType: "SOL" | "ETH" | "BTC";
-  type: "long" | "short";
-  side: "market" | "limit";
-  price: number;
-  qty: number;
-  margin: number;
-  slippage: number;
-}): HandleResult {
+export async function createOrder(
+  payload: {
+    userId: string;
+    marketType: "SOL" | "ETH" | "BTC";
+    type: "long" | "short";
+    side: "market" | "limit";
+    price: number;
+    qty: number;
+    margin: number;
+    slippage: number;
+  },
+  correlationId: string,
+): Promise<HandleResult> {
   const { userId, marketType, type, price, qty, side, margin, slippage } =
     payload;
 
@@ -190,18 +193,22 @@ export function createOrder(payload: {
       : "partial fill, remaining cancelled";
   }
 
-  void emitEngineEvent("order_created", {
-    userId,
-    orderId,
-    marketType,
-    side,
-    type,
-    qty,
-    price: order.price ?? null,
-    margin,
-    status: order.status,
-    fillQty: order.fillQty,
-  }).catch(console.error);
+  await emitEngineEvent(
+    "order_created",
+    {
+      userId,
+      orderId,
+      marketType,
+      side,
+      type,
+      qty,
+      price: order.price ?? null,
+      margin,
+      status: order.status,
+      fillQty: order.fillQty,
+    },
+    correlationId,
+  );
 
   for (const fill of fills) {
     const makerUser = users.get(fill.maker);
@@ -213,11 +220,11 @@ export function createOrder(payload: {
           o.status === "filled"),
     );
 
-    void emitEngineEvent("fill_created", {
+    await emitEngineEvent("fill_created", {
       ...fill,
       takerOrderId: orderId,
       makerOrderId: makerOrder?.orderId ?? "",
-    }).catch(console.error);
+    });
   }
 
   return {
