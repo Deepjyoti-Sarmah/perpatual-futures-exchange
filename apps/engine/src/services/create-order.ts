@@ -1,4 +1,4 @@
-import type { Order } from "@perp-v1-boilerplate/commons";
+import { mullInternal, type Order } from "@perp-v1-boilerplate/commons";
 import { emitEngineEvent } from "@perp-v1-boilerplate/redis/engine-events";
 import { randomUUIDv7 } from "bun";
 import { MAX_LEVERAGE } from "@/constants/risk";
@@ -60,7 +60,7 @@ export function createOrder(payload: {
     };
   }
 
-  const notional = estimatedPrice * qty;
+  const notional = mullInternal(estimatedPrice, qty);
   const leverage = notional / margin;
 
   if (leverage > MAX_LEVERAGE) {
@@ -76,8 +76,8 @@ export function createOrder(payload: {
 
   const maxAcceptablePrice =
     type === "long"
-      ? estimatedPrice * (1 + slippageFactor)
-      : estimatedPrice * (1 - slippageFactor);
+      ? Math.round(estimatedPrice * (1 + slippageFactor))
+      : Math.round(estimatedPrice * (1 - slippageFactor));
 
   if (user.collateral.available < margin) {
     return {

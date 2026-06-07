@@ -71,9 +71,9 @@ model Order {
   status     OrderStatus
   side       SideType
 
-  qty      Int
-  price    Int?
-  margin   Int
+  qty      BigInt
+  price    BigInt?
+  margin   BigInt
   slippage Int?
   fillQty  Int
 
