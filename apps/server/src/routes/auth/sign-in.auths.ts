@@ -32,7 +32,10 @@ signInRoute.post("/", async (req: Request, res: Response) => {
       });
     }
 
-    const isValidPassword = bcrypt.compare(password, existingUser.password);
+    const isValidPassword = await bcrypt.compare(
+      password,
+      existingUser.password,
+    );
 
     if (!isValidPassword) {
       return res.status(400).json({
@@ -51,7 +54,7 @@ signInRoute.post("/", async (req: Request, res: Response) => {
       collateral: collateral,
     });
 
-    if (!engineRes.ok) {
+    if (!engineRes.ok && engineRes.error !== "User already exists") {
       return res.status(500).json({
         message: "Failed to initalize user balance in engine",
         error: engineRes.error,

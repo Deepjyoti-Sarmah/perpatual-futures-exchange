@@ -4,20 +4,40 @@ import { users } from "@/store/engine-store";
 
 export function onRamp(payload: {
   userId: string;
-  collateral: Collateral;
+  username?: string;
+  amount: number;
 }): HandleResult {
-  const { userId, collateral } = payload;
+  const { userId, username, amount } = payload;
 
-  if (!users.has(userId)) {
-    return { ok: false, payload: "User does not exists" };
+  if (amount <= 0) {
+    return { ok: false, error: "amount must be greater than 0" };
   }
 
-  users.set(userId, {
-    userId,
-    collateral,
-    positions: [],
-    orders: [],
-  });
+  let user = users.get(userId);
 
-  return { ok: true, payload: users.get(userId) };
+  if (!user) {
+    user = {
+      userId,
+      username,
+      wallet: {
+        available: 0,
+      },
+      reservedOrderMargin: 0,
+      positions: [],
+      orders: [],
+    };
+
+    users.set(userId, user);
+  }
+
+  user.wallet.available += amount;
+
+  return {
+    ok: true,
+    payload: {
+      userId: user.userId,
+      wallet: user.wallet,
+      reservedOrderMargin: user.reservedOrderMargin,
+    },
+  };
 }

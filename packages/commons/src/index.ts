@@ -4,3 +4,5 @@ export * from "./zod/order.types";
 
 export * from "./types/engine.types";
 export * from "./types/engine-state.types";
+
+export * from "./zod/wallet.types";

@@ -3,6 +3,10 @@ export type Collateral = {
   locked: number;
 };
 
+export type Wallet = {
+  available: number;
+};
+
 export type Position = {
   market: string;
   type: "LONG" | "SHORT";
@@ -28,7 +32,8 @@ export type Order = {
 export type EngineUser = {
   userId: string;
   username?: string;
-  collateral: Collateral;
+  wallet: Wallet;
+  reservedOrderMargin: number;
   positions: Position[];
   orders: Order[];
 };
@@ -51,6 +56,7 @@ export type PriceLevel = {
     filledQty: number;
     orderId: string;
     createdAt: Date;
+    remainingMargin: number;
   }[];
 };
 

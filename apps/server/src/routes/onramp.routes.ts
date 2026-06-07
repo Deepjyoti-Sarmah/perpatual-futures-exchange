@@ -1,4 +1,4 @@
-import type { Collateral } from "@perp-v1-boilerplate/commons";
+import { onRampSchema } from "@perp-v1-boilerplate/commons";
 import prisma from "@perp-v1-boilerplate/db";
 import { sendToEngine } from "@perp-v1-boilerplate/redis/send-to-engine";
 import { type Request, type Response, Router } from "express";
@@ -15,33 +15,45 @@ onRampRouter.post("/", async (req: Request, res: Response) => {
       });
     }
 
-    const existingUser = await prisma.user.findFirst({
+    const adminUser = await prisma.user.findFirst({
       where: {
         id: userId,
       },
     });
 
-    if (!existingUser) {
-      return res.status(400).json({
-        message: "User does not exists",
-      });
-    }
-
-    if (existingUser.role !== "admin") {
+    if (!adminUser || adminUser.role !== "admin") {
       return res.status(400).json({
         message: "Forbidden: admin access is required",
       });
     }
 
-    const collateral: Collateral = {
-      available: 100,
-      locked: 0,
-    };
+    const parsedData = onRampSchema.safeParse(req.body);
+
+    if (!parsedData.success) {
+      return res.status(400).json({
+        message: "Invalid request",
+        error: parsedData.error.message,
+      });
+    }
+
+    const { targetUserId, amount } = parsedData.data;
+
+    const targetUser = await prisma.user.findFirst({
+      where: {
+        id: targetUserId,
+      },
+    });
+
+    if (!targetUser) {
+      return res.status(404).json({
+        message: "Target user not found",
+      });
+    }
 
     const engineRes = await sendToEngine("on_ramp", {
-      userId: existingUser.id,
-      username: existingUser.username,
-      collateral: collateral,
+      userId: targetUser.id,
+      username: targetUser.username,
+      amount,
     });
 
     if (!engineRes.ok) {
@@ -57,8 +69,8 @@ onRampRouter.post("/", async (req: Request, res: Response) => {
     });
   } catch (error) {
     return res.status(500).json({
-      message: "Error onRamping users account",
-      error: error,
+      message: "Error onramping user account",
+      error,
     });
   }
 });

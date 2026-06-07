@@ -5,16 +5,21 @@ import { users } from "../store/engine-store";
 export function seedUser(payload: {
   userId: string;
   collateral: Collateral;
+  username?: string;
 }): HandleResult {
-  const { userId, collateral } = payload;
+  const { userId, collateral, username } = payload;
 
   if (users.has(userId)) {
-    return { ok: false, error: "User doesnot exists" };
+    return { ok: false, error: "User already exists" };
   }
 
   users.set(userId, {
     userId,
-    collateral,
+    username,
+    wallet: {
+      available: collateral.available,
+    },
+    reservedOrderMargin: 0,
     positions: [],
     orders: [],
   });

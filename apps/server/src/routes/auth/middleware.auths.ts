@@ -15,13 +15,13 @@ export default function requireAuth(
   try {
     const authHeader = req.headers.authorization;
 
-    if (!authHeader?.startsWith("Bearer ")) {
+    if (!authHeader?.startsWith("Bearer")) {
       return res.status(401).json({
         message: "Unauthorized",
       });
     }
 
-    const token = authHeader.slice("Bearer".length);
+    const token = authHeader.slice("Bearer ".length);
 
     const decode = jwt.verify(token, env.JWT_SECRET) as TokenPayload;
     if (!decode) {

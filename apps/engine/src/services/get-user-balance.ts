@@ -14,10 +14,11 @@ export function getUserBalance(payload: { userId: string }): HandleResult {
     ok: true,
     payload: {
       userId: user.userId,
-      collateral: {
-        available: user.collateral.available,
-        locked: user.collateral.locked,
+      wallet: {
+        available: user.wallet.available,
       },
+      reservedOrderMargin: user.reservedOrderMargin,
+      positionMargin: user.positions.reduce((sum, p) => sum + p.margin, 0),
     },
   };
 }

@@ -44,21 +44,15 @@ createOrderRouter.post("/", async (req: Request, res: Response) => {
     const { price, qty, type, side, marketType, margin, slippage } =
       parsedData.data;
 
-    if (side === "limit" && price === null) {
-      return res.status(400).json({
-        message: "Limit order requires price variable",
-      });
-    }
-
     const createOrder = await sendToEngine("create_order", {
       userId: exitingUser.id,
       marketType,
       side,
       type,
-      price,
+      price: price ?? 0,
       qty,
       margin,
-      slippage,
+      slippage: slippage ?? 0,
     });
 
     return res.status(200).json({
