@@ -1,5 +1,5 @@
 {
-	"name": "market-data",
+	"name": "db-writer",
 	"type": "module",
 	"main": "src/index.ts",
 	"scripts": {
@@ -9,6 +9,7 @@
 		"start": "bun run dist/index.mjs"
 	},
 	"dependencies": {
+		"@perp-v1-boilerplate/db": "workspace:*",
 		"@perp-v1-boilerplate/env": "workspace:*",
 		"@perp-v1-boilerplate/redis": "workspace:*",
 		"dotenv": "catalog:"

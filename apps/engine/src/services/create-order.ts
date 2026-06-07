@@ -1,186 +1,224 @@
 import type { Order } from "@perp-v1-boilerplate/commons";
+import { emitEngineEvent } from "@perp-v1-boilerplate/redis/engine-events";
 import { randomUUIDv7 } from "bun";
-import { getOrderBook } from "@/handlers/get-orderbook";
-import { users } from "@/store/engine-store";
+import { MAX_LEVERAGE } from "@/constants/risk";
 import { marketMatch } from "@/engines/market-matching";
-import { restInOrderBook } from "@/handlers/rest-in-orderbook";
+import { getOrderBook } from "@/handlers/get-orderbook";
 import type { HandleResult } from "@/handlers/processCommand";
+import { restInOrderBook } from "@/handlers/rest-in-orderbook";
+import { users } from "@/store/engine-store";
 
 export function createOrder(payload: {
-  userId: string;
-  marketType: "SOL" | "ETH" | "BTC";
-  type: "long" | "short";
-  side: "market" | "limit";
-  price: number;
-  qty: number;
-  margin: number;
-  slippage: number;
+	userId: string;
+	marketType: "SOL" | "ETH" | "BTC";
+	type: "long" | "short";
+	side: "market" | "limit";
+	price: number;
+	qty: number;
+	margin: number;
+	slippage: number;
 }): HandleResult {
-  //1- validate user
-  const { userId, marketType, type, price, qty, side, margin, slippage } =
-    payload;
+	const { userId, marketType, type, price, qty, side, margin, slippage } =
+		payload;
 
-  const user = users.get(userId);
-  if (!user) {
-    return { ok: false, payload: "User doesnot exists" };
-  }
+	const user = users.get(userId);
+	if (!user) {
+		return { ok: false, error: "User does not exist" };
+	}
 
-  //2 - Get or create orderbook
-  const orderBook = getOrderBook(marketType);
+	const orderBook = getOrderBook(marketType);
 
-  //3 - validate limit order price
-  if (side === "limit" && (price == null || price <= 0)) {
-    return { ok: false, payload: "limit order requires a valid price" };
-  }
+	if (side === "limit" && (price == null || price <= 0)) {
+		return {
+			ok: false,
+			error: "limit order requires a valid price",
+		};
+	}
 
-  // 4. Estimate price for  margin + leverage cal
-  let estimatedPrice = price;
+	let estimatedPrice = price;
 
-  if (side === "market") {
-    if (type === "long") {
-      // Buying -> match against asks -> cheapest ask
-      const bestAsk = Object.keys(orderBook.asks)
-        .map(Number)
-        .sort((a, b) => a - b)[0];
+	if (side === "market") {
+		if (type === "long") {
+			const bestAsk = Object.keys(orderBook.asks)
+				.map(Number)
+				.sort((a, b) => a - b)[0];
 
-      estimatedPrice = bestAsk ?? orderBook.indexPrice;
-    } else {
-      // Seling -> match against bids -> highest bid
-      const bestBid = Object.keys(orderBook.bids)
-        .map(Number)
-        .sort((a, b) => b - a)[0];
+			estimatedPrice = bestAsk ?? orderBook.indexPrice;
+		} else {
+			const bestBid = Object.keys(orderBook.bids)
+				.map(Number)
+				.sort((a, b) => b - a)[0];
 
-      estimatedPrice = bestBid ?? orderBook.indexPrice;
-    }
-  }
+			estimatedPrice = bestBid ?? orderBook.indexPrice;
+		}
+	}
 
-  if (!estimatedPrice || estimatedPrice <= 0) {
-    return { ok: false, payload: "Cannot determine price for order" };
-  }
+	if (!estimatedPrice || estimatedPrice <= 0) {
+		return {
+			ok: false,
+			error: "Cannot determine price for order",
+		};
+	}
 
-  // 5 - slippage (market order)
-  const hasSlippageGuard = side === "market" && slippage > 0;
-  const slippageFactor = slippage / 100;
+	const notional = estimatedPrice * qty;
+	const leverage = notional / margin;
 
-  const maxAcceptablePrice =
-    type === "long"
-      ? estimatedPrice * (1 + slippageFactor)
-      : estimatedPrice * (1 - slippageFactor);
+	if (leverage > MAX_LEVERAGE) {
+		return {
+			ok: false,
+			error: `Max leverage exceeded.
+ allowed=${MAX_LEVERAGE}x got=${leverage.toFixed(2)}x`,
+		};
+	}
 
-  // 6 - leverage from margin
-  const leverage = (estimatedPrice * qty) / margin;
+	const hasSlippageGuard = side === "market" && slippage > 0;
+	const slippageFactor = slippage / 100;
 
-  // 7 - Check and lock collateral
-  if (user.collateral.available < margin) {
-    return { ok: false, payload: "Insufficient collateral" };
-  }
+	const maxAcceptablePrice =
+		type === "long"
+			? estimatedPrice * (1 + slippageFactor)
+			: estimatedPrice * (1 - slippageFactor);
 
-  user.collateral.available -= margin;
-  user.collateral.locked += margin;
+	if (user.collateral.available < margin) {
+		return {
+			ok: false,
+			error: "Insufficient wallet balance",
+		};
+	}
 
-  // 8 - Build order object
-  const orderId = randomUUIDv7();
+	user.collateral.available -= margin;
+	user.collateral.locked += margin;
+	user.reservedOrderMargin += margin;
 
-  const order: Order = {
-    orderId,
-    market: marketType,
-    type: type === "long" ? "LONG" : "SHORT",
-    qty,
-    margin,
-    side,
-    price: side === "limit" ? price : undefined,
-    status: "open",
-    fillQty: 0,
-  };
+	const orderId = randomUUIDv7();
 
-  // 9 - Match against order book
-  const { fills, usedMargin, remainingQty } = marketMatch({
-    user,
-    marketType,
-    type,
-    side,
-    price,
-    qty,
-    margin,
-    hasSlippageGuard,
-    maxAcceptablePrice,
-    orderBook,
-  });
+	const order: Order = {
+		orderId,
+		market: marketType,
+		type: type === "long" ? "LONG" : "SHORT",
+		qty,
+		margin,
+		side,
+		price: side === "limit" ? price : undefined,
+		status: "open",
+		fillQty: 0,
+	};
 
-  // 10 - Resolve final status
-  const filledQty = qty - remainingQty;
-  let releasedMargin = 0;
-  let cancelledQty = 0;
+	const { fills, usedMargin, remainingQty } = marketMatch({
+		user,
+		marketType,
+		type,
+		side,
+		price,
+		qty,
+		margin,
+		hasSlippageGuard,
+		maxAcceptablePrice,
+		orderBook,
+	});
 
-  if (remainingQty === 0) {
-    // fully filled
-    order.status = "filled";
-    releasedMargin = margin - usedMargin;
-    user.collateral.locked -= releasedMargin;
-    user.collateral.available += releasedMargin;
-  } else if (filledQty > 0) {
-    // partially filled
-    order.status = "partially_filled";
+	const filledQty = qty - remainingQty;
+	let releasedMargin = 0;
+	let cancelledQty = 0;
+	let restingMargin = 0;
 
-    if (side === "market") {
-      // market orders never rest
-      cancelledQty = remainingQty;
-      releasedMargin = margin - usedMargin;
-      user.collateral.locked -= releasedMargin;
-      user.collateral.available += releasedMargin;
-    } else {
-      // limit orders rest remaining qty in the orderbook
-      restInOrderBook(orderBook, orderId, userId, type, price, remainingQty);
-    }
-  } else {
-    // Nothing filled
-    if (side === "market") {
-      order.status = "cancelled";
-      cancelledQty = qty;
-      releasedMargin = margin;
-      user.collateral.locked -= margin;
-      user.collateral.available += margin;
-    } else {
-      order.status = "open";
-      restInOrderBook(orderBook, orderId, userId, type, price, remainingQty);
-    }
-  }
+	if (remainingQty === 0) {
+		order.status = "filled";
+		releasedMargin = margin - usedMargin;
+		user.reservedOrderMargin -= margin;
+		user.collateral.locked -= releasedMargin;
+		user.collateral.available += releasedMargin;
+	} else if (filledQty > 0) {
+		order.status = "partially_filled";
 
-  order.fillQty = filledQty;
-  user.orders.push(order);
+		if (side === "market") {
+			cancelledQty = remainingQty;
+			releasedMargin = margin - usedMargin;
+			user.reservedOrderMargin -= margin;
+			user.collateral.locked -= releasedMargin;
+			user.collateral.available += releasedMargin;
+		} else {
+			restingMargin = margin - usedMargin;
+			user.reservedOrderMargin -= usedMargin;
+			restInOrderBook(
+				orderBook,
+				orderId,
+				userId,
+				type,
+				price,
+				remainingQty,
+				restingMargin,
+			);
+		}
+	} else {
+		if (side === "market") {
+			order.status = "cancelled";
+			cancelledQty = qty;
+			releasedMargin = margin;
+			user.reservedOrderMargin -= margin;
+			user.collateral.locked -= margin;
+			user.collateral.available += margin;
+		} else {
+			order.status = "open";
+			restingMargin = margin;
+			restInOrderBook(
+				orderBook,
+				orderId,
+				userId,
+				type,
+				price,
+				remainingQty,
+				restingMargin,
+			);
+		}
+	}
 
-  // 11 Build reason string
-  let reason: string | undefined;
+	if (user.reservedOrderMargin < 0) user.reservedOrderMargin = 0;
 
-  if (order.status === "cancelled") {
-    if (hasSlippageGuard) {
-      reason = "no fills within slippage tolerance";
-    } else {
-      reason = "no matching orders";
-    }
-  } else if (order.status === "partially_filled" && side === "market") {
-    if (hasSlippageGuard) {
-      reason = "partial fiil, remaing exceeded slippage tolerance";
-    } else {
-      reason = "partial fill, remaining calcelled";
-    }
-  }
+	order.fillQty = filledQty;
+	user.orders.push(order);
 
-  // 12 return result
-  return {
-    ok: true,
-    payload: {
-      orderId,
-      status: order.status,
-      reason,
-      fills,
-      filledQty,
-      remainingQty,
-      cancelledQty,
-      collateral: {
-        available: user.collateral.available,
-        locked: user.collateral.locked,
-      },
-    },
-  };
+	let reason: string | undefined;
+
+	if (order.status === "cancelled") {
+		reason = hasSlippageGuard
+			? "no fills within slippage tolerance"
+			: "no matching orders";
+	} else if (order.status === "partially_filled" && side === "market") {
+		reason = hasSlippageGuard
+			? "partial fill, remaining exceeded slippage tolerance"
+			: "partial fill, remaining cancelled";
+	}
+
+	void emitEngineEvent("order_created", {
+		userId,
+		orderId,
+		marketType,
+		side,
+		type,
+		qty,
+		price: order.price ?? null,
+		margin,
+		status: order.status,
+		fillQty: order.fillQty,
+	}).catch(console.error);
+
+	for (const fill of fills) {
+		void emitEngineEvent("fill_created", fill).catch(console.error);
+	}
+
+	return {
+		ok: true,
+		payload: {
+			orderId,
+			status: order.status,
+			reason,
+			fills,
+			filledQty,
+			remainingQty,
+			cancelledQty,
+			collateral: user.collateral,
+			reservedOrderMargin: user.reservedOrderMargin,
+		},
+	};
 }

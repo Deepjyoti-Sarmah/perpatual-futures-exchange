@@ -3,9 +3,9 @@ import { startEngineListener } from "./redis/start-engine-listener";
 import { startMarketDataListener } from "./redis/start-market-data-listener";
 
 async function main() {
-  await connectEngineRedis();
+	await connectEngineRedis();
 
-  await Promise.all([startEngineListener(), startMarketDataListener()]);
+	await Promise.all([startEngineListener(), startMarketDataListener()]);
 }
 
 main().catch(console.error);

@@ -3,29 +3,30 @@ import type { HandleResult } from "../handlers/processCommand";
 import { users } from "../store/engine-store";
 
 export function seedUser(payload: {
-  userId: string;
-  collateral: Collateral;
-  username?: string;
+	userId: string;
+	collateral: Collateral;
+	username?: string;
 }): HandleResult {
-  const { userId, collateral, username } = payload;
+	const { userId, collateral, username } = payload;
 
-  if (users.has(userId)) {
-    return { ok: false, error: "User already exists" };
-  }
+	if (users.has(userId)) {
+		return { ok: false, error: "User already exists" };
+	}
 
-  users.set(userId, {
-    userId,
-    username,
-    wallet: {
-      available: collateral.available,
-    },
-    reservedOrderMargin: 0,
-    positions: [],
-    orders: [],
-  });
+	users.set(userId, {
+		userId,
+		username,
+		collateral: {
+			available: collateral.available,
+			locked: 0,
+		},
+		reservedOrderMargin: 0,
+		positions: [],
+		orders: [],
+	});
 
-  return {
-    ok: true,
-    payload: users.get(userId),
-  };
+	return {
+		ok: true,
+		payload: users.get(userId),
+	};
 }

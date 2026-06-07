@@ -1,4 +1,5 @@
 import type { EngineUser, Fill, Order } from "@perp-v1-boilerplate/commons";
+import { emitEngineEvent } from "@perp-v1-boilerplate/redis/engine-events";
 import { checkLiquidation } from "@/handlers/check-liquidation";
 import type { HandleResult } from "@/handlers/processCommand";
 import { reducePosition } from "@/handlers/reduce-position";
@@ -154,9 +155,9 @@ export function liquidatePosition(payload: {
           fillMargin: makerFillMargin,
         });
 
-        makerUser.collateral.locked -= makerFillMargin;
-        if (makerUser.collateral.locked < 0) {
-          makerUser.collateral.locked = 0;
+        makerUser.reservedOrderMargin -= makerFillMargin;
+        if (makerUser.reservedOrderMargin < 0) {
+          makerUser.reservedOrderMargin = 0;
         }
 
         syncMakerOrderFill(makerUser, openOrder.orderId, matchQty);
@@ -249,9 +250,9 @@ export function liquidatePosition(payload: {
           fillMargin: makerFillMargin,
         });
 
-        makerUser.collateral.locked -= makerFillMargin;
-        if (makerUser.collateral.locked < 0) {
-          makerUser.collateral.locked = 0;
+        makerUser.reservedOrderMargin -= makerFillMargin;
+        if (makerUser.reservedOrderMargin < 0) {
+          makerUser.reservedOrderMargin = 0;
         }
 
         syncMakerOrderFill(makerUser, openOrder.orderId, matchQty);
@@ -289,6 +290,16 @@ export function liquidatePosition(payload: {
       (p) => p.market === marketType && p.type === positionType,
     ) || null;
 
+  void emitEngineEvent("liquidation_executed", {
+    userId,
+    marketType,
+    positionType,
+    filledQty: position.qty - remainingQty,
+    remainingQty,
+    fills,
+    cancelledOrderIds,
+  }).catch(console.error);
+
   return {
     ok: true,
     payload: {
@@ -303,10 +314,8 @@ export function liquidatePosition(payload: {
       status: remainingPosition ? "partially_filled" : "fully_liquidated",
       bankruptcyCandidate: remainingQty > 0,
       remainingPosition,
-      collateral: {
-        available: user.collateral.available,
-        locked: user.collateral.locked,
-      },
+      collateral: user.collateral,
+      reservedOrderMargin: user.reservedOrderMargin,
     },
   };
 }

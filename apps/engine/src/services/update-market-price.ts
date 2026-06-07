@@ -1,83 +1,92 @@
+import { emitEngineEvent } from "@perp-v1-boilerplate/redis/engine-events";
 import { recalculatePnl } from "@/handlers/calculate-Pnl";
 import { checkLiquidation } from "@/handlers/check-liquidation";
+import { calculateFundingRate } from "@/handlers/create-funding-rate";
 import { getOrderBook } from "@/handlers/get-orderbook";
 import type { HandleResult } from "@/handlers/processCommand";
 import { users } from "@/store/engine-store";
 import { liquidatePosition } from "./liquidation-position";
-import { calculateFundingRate } from "@/handlers/create-funding-rate";
 import { settleFunding } from "./settle-funding";
 
 export function updateMarketPrice(payload: {
-  marketType: "SOL" | "ETH" | "BTC";
-  indexPrice: number;
-  markPrice: number;
+	marketType: "SOL" | "ETH" | "BTC";
+	indexPrice: number;
+	markPrice: number;
 }): HandleResult {
-  const { marketType, indexPrice, markPrice } = payload;
+	const { marketType, indexPrice, markPrice } = payload;
 
-  if (indexPrice <= 0 || markPrice <= 0) {
-    return { ok: false, error: "Invalid market prices" };
-  }
+	if (indexPrice <= 0 || markPrice <= 0) {
+		return { ok: false, error: "Invalid market prices" };
+	}
 
-  const orderBook = getOrderBook(marketType);
+	const orderBook = getOrderBook(marketType);
 
-  orderBook.indexPrice = indexPrice;
-  orderBook.markPrice = markPrice;
-  orderBook.fundingRate = calculateFundingRate(markPrice, indexPrice);
+	orderBook.indexPrice = indexPrice;
+	orderBook.markPrice = markPrice;
+	orderBook.fundingRate = calculateFundingRate(markPrice, indexPrice);
 
-  const liquidationResults: unknown[] = [];
+	const liquidationResults: unknown[] = [];
 
-  for (const user of users.values()) {
-    const marketPositions = user.positions.filter(
-      (position) => position.market === marketType,
-    );
+	for (const user of users.values()) {
+		const marketPositions = user.positions.filter(
+			(position) => position.market === marketType,
+		);
 
-    if (marketPositions.length === 0) {
-      continue;
-    }
+		if (marketPositions.length === 0) {
+			continue;
+		}
 
-    recalculatePnl(user);
+		recalculatePnl(user);
 
-    for (const position of marketPositions) {
-      const result = checkLiquidation(user, position);
+		for (const position of marketPositions) {
+			const result = checkLiquidation(user, position);
 
-      if (!result.shouldLiquidate) {
-        continue;
-      }
+			if (!result.shouldLiquidate) {
+				continue;
+			}
 
-      const executionResult = liquidatePosition({
-        userId: user.userId,
-        marketType,
-        positionType: position.type,
-      });
+			const executionResult = liquidatePosition({
+				userId: user.userId,
+				marketType,
+				positionType: position.type,
+			});
 
-      liquidationResults.push({
-        userId: user.userId,
-        positionType: position.type,
-        trigger: {
-          markPrice: result.markPrice,
-          equity: result.equity,
-          maintenanceMargin: result.maintenanceMargin,
-        },
-        check: result,
-        execution: executionResult,
-      });
-    }
-  }
+			liquidationResults.push({
+				userId: user.userId,
+				positionType: position.type,
+				trigger: {
+					markPrice: result.markPrice,
+					equity: result.equity,
+					maintenanceMargin: result.maintenanceMargin,
+				},
+				check: result,
+				execution: executionResult,
+			});
+		}
+	}
 
-  let fundingSettlement: ReturnType<typeof settleFunding> | null = null;
+	let fundingSettlement: ReturnType<typeof settleFunding> | null = null;
 
-  if (Date.now() >= orderBook.nextFundingTime) {
-    fundingSettlement = settleFunding({ marketType });
-  }
+	if (Date.now() >= orderBook.nextFundingTime) {
+		fundingSettlement = settleFunding({ marketType });
+	}
 
-  return {
-    ok: true,
-    payload: {
-      market: marketType,
-      indexPrice: orderBook.indexPrice,
-      markPrice: orderBook.markPrice,
-      liquidationResults,
-      fundingSettlement,
-    },
-  };
+	void emitEngineEvent("market_price_updated", {
+		marketType,
+		indexPrice,
+		markPrice,
+		fundingRate: orderBook.fundingRate,
+		ts: Date.now(),
+	}).catch(console.error);
+
+	return {
+		ok: true,
+		payload: {
+			market: marketType,
+			indexPrice: orderBook.indexPrice,
+			markPrice: orderBook.markPrice,
+			liquidationResults,
+			fundingSettlement,
+		},
+	};
 }

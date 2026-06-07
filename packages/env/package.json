@@ -1,19 +1,19 @@
 {
-  "name": "@perp-v1-boilerplate/env",
-  "version": "0.0.0",
-  "private": true,
-  "type": "module",
-  "exports": {
-    "./index": "./src/index.ts"
-  },
-  "dependencies": {
-    "@t3-oss/env-core": "^0.13.1",
-    "dotenv": "catalog:",
-    "zod": "catalog:"
-  },
-  "devDependencies": {
-    "@perp-v1-boilerplate/config": "workspace:*",
-    "@types/bun": "catalog:",
-    "typescript": "catalog:"
-  }
+	"name": "@perp-v1-boilerplate/env",
+	"version": "0.0.0",
+	"private": true,
+	"type": "module",
+	"exports": {
+		"./index": "./src/index.ts"
+	},
+	"dependencies": {
+		"@t3-oss/env-core": "^0.13.1",
+		"dotenv": "catalog:",
+		"zod": "catalog:"
+	},
+	"devDependencies": {
+		"@perp-v1-boilerplate/config": "workspace:*",
+		"@types/bun": "catalog:",
+		"typescript": "catalog:"
+	}
 }

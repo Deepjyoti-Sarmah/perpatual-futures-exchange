@@ -1,7 +1,7 @@
 import type {
-  EngineCommandType,
-  EngineRequest,
-  EngineResponse,
+	EngineCommandType,
+	EngineRequest,
+	EngineResponse,
 } from "@perp-v1-boilerplate/commons";
 import { env } from "@perp-v1-boilerplate/env/index";
 import { producerClient } from "../src";
@@ -11,51 +11,51 @@ export const SERVER_ID = crypto.randomUUID();
 export const RESPONSE_STREAM = `engine:response:${SERVER_ID}`;
 
 export interface PendingResponse {
-  resolve: (response: EngineResponse) => void;
-  reject: (error: Error) => void;
-  timeout: ReturnType<typeof setTimeout>;
+	resolve: (response: EngineResponse) => void;
+	reject: (error: Error) => void;
+	timeout: ReturnType<typeof setTimeout>;
 }
 
 export const pendingResponse = new Map<string, PendingResponse>();
 
 export async function waitForEngineResponse(
-  correlationId: string,
-  timeoutMs: number,
+	correlationId: string,
+	timeoutMs: number,
 ): Promise<EngineResponse> {
-  return new Promise((resolve, reject) => {
-    const timeout = setTimeout(() => {
-      pendingResponse.delete(correlationId);
-      reject(new Error("Engine timeout"));
-    }, timeoutMs);
+	return new Promise((resolve, reject) => {
+		const timeout = setTimeout(() => {
+			pendingResponse.delete(correlationId);
+			reject(new Error("Engine timeout"));
+		}, timeoutMs);
 
-    pendingResponse.set(correlationId, { resolve, reject, timeout });
-  });
+		pendingResponse.set(correlationId, { resolve, reject, timeout });
+	});
 }
 
 export async function sendToEngine(
-  type: EngineCommandType,
-  payload: Record<string, unknown>,
+	type: EngineCommandType,
+	payload: Record<string, unknown>,
 ): Promise<EngineResponse> {
-  const correlationId = crypto.randomUUID();
+	const correlationId = crypto.randomUUID();
 
-  const responsePromise = waitForEngineResponse(
-    correlationId,
-    env.ENGINE_TIMEOUT || 5000,
-  );
+	const responsePromise = waitForEngineResponse(
+		correlationId,
+		env.ENGINE_TIMEOUT || 5000,
+	);
 
-  const message: EngineRequest = {
-    correlationId: correlationId,
-    responseStream: RESPONSE_STREAM,
-    type,
-    payload,
-  };
+	const message: EngineRequest = {
+		correlationId: correlationId,
+		responseStream: RESPONSE_STREAM,
+		type,
+		payload,
+	};
 
-  await producerClient.xAdd(ENGINE_COMMAND_STREAM, "*", {
-    correlationId: message.correlationId,
-    responseStream: message.responseStream,
-    type: message.type,
-    payload: JSON.stringify(message.payload),
-  });
+	await producerClient.xAdd(ENGINE_COMMAND_STREAM, "*", {
+		correlationId: message.correlationId,
+		responseStream: message.responseStream,
+		type: message.type,
+		payload: JSON.stringify(message.payload),
+	});
 
-  return responsePromise;
+	return responsePromise;
 }
