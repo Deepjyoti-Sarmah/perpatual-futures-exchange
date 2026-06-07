@@ -27,11 +27,11 @@ export async function emitEngineEvent(
 
   await producerClient.xAdd(ENGINE_EVENT_STREAM, "*", event);
 
-  await producerClient.publish(
-    ENGINE_WS_CHANNEL,
-    JSON.stringify({
-      ...event,
-      payload,
-    }),
-  );
+  // await producerClient.publish(
+  //   ENGINE_WS_CHANNEL,
+  //   JSON.stringify({
+  //     ...event,
+  //     payload,
+  //   }),
+  // );
 }

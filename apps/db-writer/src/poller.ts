@@ -5,6 +5,8 @@ import { handleLiquidationExecuted } from "./handlers/liquidation-executed";
 import { handleOrderCancelled } from "./handlers/order-cancelled";
 import { handleOrderCreated } from "./handlers/order-create";
 import type { EngineEventType } from "./types";
+import { processEvent } from "./process-event";
+import { eventBuffer } from "./buffer";
 
 const DB_WRITER_GROUP = "db-writer-group";
 const DB_WRITER_CONSUMER = `db-writer-${crypto.randomUUID()}`;
@@ -18,7 +20,7 @@ type RedisStreamEntry = {
 
 type RedisGroupReadResponse = Array<{
   name: string;
-  message: RedisStreamEntry[];
+  messages: RedisStreamEntry[];
 }>;
 
 async function ensureConsumerGroup() {
@@ -31,49 +33,13 @@ async function ensureConsumerGroup() {
     });
 }
 
-async function processMessage(entry: RedisStreamEntry) {
-  const eventType = entry.message.eventType as EngineEventType | undefined;
-  const rawPayload = entry.message.payload;
-
-  if (!eventType || !rawPayload) {
-    console.warn("Malformed event:", entry.id);
-    return;
-  }
-
-  let payload: Record<string, unknown>;
-
-  try {
-    payload = JSON.parse(rawPayload) as Record<string, unknown>;
-  } catch {
-    console.warn("Bad json payload for event:", eventType, entry.id);
-    return;
-  }
-
-  switch (eventType) {
-    case "order_created":
-      await handleOrderCreated(payload as any);
-      break;
-    case "order_cancelled":
-      await handleOrderCancelled(payload as any);
-      break;
-    case "fill_created":
-      await handleFillCreated(payload as any);
-      break;
-    case "liquidation_executed":
-      await handleLiquidationExecuted(payload as any);
-      break;
-    default:
-      console.warn("unknown event type:", eventType);
-  }
-}
-
 const retryCounts = new Map<string, number>();
 
 async function handleWithRetry(
   entry: RedisStreamEntry,
 ): Promise<"ack" | "nack"> {
   try {
-    await processMessage(entry);
+    await processEvent(entry);
     retryCounts.delete(entry.id);
     return "ack";
   } catch (err) {
@@ -115,15 +81,15 @@ async function recoverPendingMessage() {
     }
 
     for (const entry of message) {
-      const result = await handleWithRetry(entry);
+      const eventType = entry.message.eventType as EngineEventType;
 
-      if (result === "ack") {
-        await subscriberClient.xAck(
-          ENGINE_EVENT_STREAM,
-          DB_WRITER_GROUP,
-          entry.id,
-        );
-      }
+      const payload = JSON.parse(entry.message.payload);
+
+      eventBuffer.push({
+        id: entry.id,
+        eventType,
+        payload,
+      });
     }
   } catch (error) {
     console.error("Error recovering pending message:", error);
@@ -151,7 +117,7 @@ export async function startDbWriter() {
       }
 
       for (const stream of raw) {
-        for (const entry of stream.message) {
+        for (const entry of stream.messages) {
           const result = await handleWithRetry(entry);
           if (result === "ack") {
             await subscriberClient.xAck(
