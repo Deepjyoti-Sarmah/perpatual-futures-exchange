@@ -31,6 +31,7 @@ export async function handleFillCreated(payload: FillCreatedPayload) {
 
   await prisma.fill.create({
     data: {
+      fillId,
       qty: qty,
       price: price,
       makerId: makerOrder.id,
