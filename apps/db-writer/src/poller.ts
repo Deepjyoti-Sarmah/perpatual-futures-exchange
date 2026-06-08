@@ -1,16 +1,13 @@
 import { subscriberClient } from "@perp-v1-boilerplate/redis";
 import { ENGINE_EVENT_STREAM } from "@perp-v1-boilerplate/redis/engine-events";
-import { handleFillCreated } from "./handlers/fill-created";
-import { handleLiquidationExecuted } from "./handlers/liquidation-executed";
-import { handleOrderCancelled } from "./handlers/order-cancelled";
-import { handleOrderCreated } from "./handlers/order-create";
-import type { EngineEventType } from "./types";
-import { processEvent } from "./process-event";
+
 import { eventBuffer } from "./buffer";
+import { flushBuffer } from "./flusher";
+import { parseEvent } from "./parse-event";
 
 const DB_WRITER_GROUP = "db-writer-group";
 const DB_WRITER_CONSUMER = `db-writer-${crypto.randomUUID()}`;
-const MAX_RETRIES = 5;
+
 const PENDING_IDLE_MS = 30_000;
 
 type RedisStreamEntry = {
@@ -25,7 +22,9 @@ type RedisGroupReadResponse = Array<{
 
 async function ensureConsumerGroup() {
   await subscriberClient
-    .xGroupCreate(ENGINE_EVENT_STREAM, DB_WRITER_GROUP, "0", { MKSTREAM: true })
+    .xGroupCreate(ENGINE_EVENT_STREAM, DB_WRITER_GROUP, "0", {
+      MKSTREAM: true,
+    })
     .catch((err: Error) => {
       if (!err.message.includes("BUSYGROUP")) {
         throw err;
@@ -33,37 +32,7 @@ async function ensureConsumerGroup() {
     });
 }
 
-const retryCounts = new Map<string, number>();
-
-async function handleWithRetry(
-  entry: RedisStreamEntry,
-): Promise<"ack" | "nack"> {
-  try {
-    await processEvent(entry);
-    retryCounts.delete(entry.id);
-    return "ack";
-  } catch (err) {
-    const attempts = (retryCounts.get(entry.id) ?? 0) + 1;
-    retryCounts.set(entry.id, attempts);
-
-    if (attempts >= MAX_RETRIES) {
-      console.error(
-        `Dead-lettering ${entry.id} after ${attempts} attempts:`,
-        err,
-      );
-      retryCounts.delete(entry.id);
-      return "ack";
-    }
-
-    console.warn(
-      `Message ${entry.id} failed (attempt ${attempts}/${MAX_RETRIES}):`,
-      (err as Error).message,
-    );
-    return "nack";
-  }
-}
-
-async function recoverPendingMessage() {
+async function recoverPendingMessages() {
   try {
     const claimed = await subscriberClient.xAutoClaim(
       ENGINE_EVENT_STREAM,
@@ -71,45 +40,62 @@ async function recoverPendingMessage() {
       DB_WRITER_CONSUMER,
       PENDING_IDLE_MS,
       "0-0",
-      { COUNT: 100 },
+      {
+        COUNT: 100,
+      },
     );
 
-    const message =
+    const messages =
       (claimed as { messages?: RedisStreamEntry[] }).messages ?? [];
-    if (message.length > 0) {
-      console.log(`Recovered ${message.length} pending message(s)`);
+
+    if (messages.length > 0) {
+      console.log(`Recovered ${messages.length} pending message(s)`);
     }
 
-    for (const entry of message) {
-      const eventType = entry.message.eventType as EngineEventType;
+    for (const entry of messages) {
+      try {
+        const event = parseEvent(entry);
 
-      const payload = JSON.parse(entry.message.payload);
+        eventBuffer.push(event);
+      } catch (error) {
+        console.error("Failed to parse recovered event:", entry.id, error);
+      }
+    }
 
-      eventBuffer.push({
-        id: entry.id,
-        eventType,
-        payload,
-      });
+    if (eventBuffer.length >= 100) {
+      await flushBuffer();
     }
   } catch (error) {
-    console.error("Error recovering pending message:", error);
+    console.error("Error recovering pending messages:", error);
   }
 }
 
 export async function startDbWriter() {
   await ensureConsumerGroup();
+
   console.log(`DB writer started - consumer: ${DB_WRITER_CONSUMER}`);
 
-  await recoverPendingMessage();
-  setInterval(() => recoverPendingMessage().catch(console.error), 60_000);
+  await recoverPendingMessages();
+
+  setInterval(() => {
+    recoverPendingMessages().catch(console.error);
+  }, 60_000);
 
   for (; ;) {
     try {
       const raw = (await subscriberClient.xReadGroup(
         DB_WRITER_GROUP,
         DB_WRITER_CONSUMER,
-        [{ key: ENGINE_EVENT_STREAM, id: ">" }],
-        { BLOCK: 5000, COUNT: 50 },
+        [
+          {
+            key: ENGINE_EVENT_STREAM,
+            id: ">",
+          },
+        ],
+        {
+          BLOCK: 5000,
+          COUNT: 50,
+        },
       )) as RedisGroupReadResponse | null;
 
       if (!raw) {
@@ -118,19 +104,23 @@ export async function startDbWriter() {
 
       for (const stream of raw) {
         for (const entry of stream.messages) {
-          const result = await handleWithRetry(entry);
-          if (result === "ack") {
-            await subscriberClient.xAck(
-              ENGINE_EVENT_STREAM,
-              DB_WRITER_GROUP,
-              entry.id,
-            );
+          try {
+            const event = parseEvent(entry);
+
+            eventBuffer.push(event);
+
+            if (eventBuffer.length >= 100) {
+              await flushBuffer();
+            }
+          } catch (error) {
+            console.error("Failed to parse event:", entry.id, error);
           }
         }
       }
     } catch (error) {
       console.error("DB writer loop error, retrying in 2s...", error);
-      await new Promise((r) => setTimeout(r, 2000));
+
+      await new Promise((resolve) => setTimeout(resolve, 2000));
     }
   }
 }

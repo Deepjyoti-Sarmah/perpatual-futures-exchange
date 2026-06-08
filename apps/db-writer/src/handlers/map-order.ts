@@ -1,4 +1,4 @@
-import type { OrderCreatedPayload } from "src/types";
+import type { OrderCreatedPayload } from "../types";
 
 export function mapOrderStatus(
   status: OrderCreatedPayload["status"],

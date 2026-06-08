@@ -4,7 +4,6 @@ import type { FillCreatedPayload } from "../types";
 export async function handleFillCreated(payload: FillCreatedPayload) {
   const { makerOrderId, takerOrderId, market, qty, price } = payload;
 
-  // Use exact IDs — no more ambiguous findFirst by userId+marketId
   const makerOrder = await prisma.order.findUnique({
     where: { id: makerOrderId },
   });
@@ -31,7 +30,6 @@ export async function handleFillCreated(payload: FillCreatedPayload) {
   });
   if (existing) return;
 
-  // qty and price are already BigInt-compatible numbers from the payload
   await prisma.fill.create({
     data: {
       qty: qty,
