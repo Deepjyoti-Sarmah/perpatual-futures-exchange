@@ -1,4 +1,5 @@
 import prisma from "@perp-v1-boilerplate/db";
+import { getMarketId } from "../cache/market-cache";
 import type { OrderCreatedPayload } from "../types";
 import { mapOrderStatus, mapOrderType, mapSide } from "./map-order";
 
@@ -18,12 +19,7 @@ export async function handleOrderCreated(
     fillQty,
   } = payload;
 
-  const market = await prisma.market.findFirst({
-    where: { symbol: marketType },
-  });
-  if (!market) {
-    throw new Error(`Market not found for symbol ${marketType} — will retry`);
-  }
+  const marketId = getMarketId(marketType);
 
   await prisma.order.upsert({
     where: { id: orderId },
@@ -38,7 +34,7 @@ export async function handleOrderCreated(
       margin,
       fillQty,
       userId,
-      marketId: market.id,
+      marketId,
     },
     update: {
       status: mapOrderStatus(status),

@@ -1,4 +1,3 @@
-import type { EngineResponse } from "@perp-v1-boilerplate/commons";
 import { env } from "@perp-v1-boilerplate/env/index";
 import { createClient } from "redis";
 

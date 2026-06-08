@@ -1,6 +1,6 @@
 import prisma from "@perp-v1-boilerplate/db";
-import { handleFillCreated } from "./fill-created";
 import type { LiquidationExecutedPayload } from "../types";
+import { handleFillCreated } from "./fill-created";
 
 export async function handleLiquidationExecuted(
   payload: LiquidationExecutedPayload,

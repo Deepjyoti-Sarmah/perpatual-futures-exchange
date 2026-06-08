@@ -6,10 +6,18 @@ import { processEvent } from "./process-event";
 
 const DB_WRITER_GROUP = "db-writer-group";
 
+let flushing = false;
+
 export async function flushBuffer() {
   if (eventBuffer.length === 0) {
     return;
   }
+
+  if (flushing) {
+    return;
+  }
+
+  flushing = true;
 
   const batch = eventBuffer.splice(0, eventBuffer.length);
 
@@ -29,5 +37,7 @@ export async function flushBuffer() {
     eventBuffer.unshift(...batch);
 
     throw error;
+  } finally {
+    flushing = false;
   }
 }

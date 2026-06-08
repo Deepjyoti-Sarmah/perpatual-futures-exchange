@@ -1,4 +1,5 @@
 import prisma from "@perp-v1-boilerplate/db";
+import { getMarketId } from "../cache/market-cache";
 import type { FillCreatedPayload } from "../types";
 
 export async function handleFillCreated(payload: FillCreatedPayload) {
@@ -17,18 +18,16 @@ export async function handleFillCreated(payload: FillCreatedPayload) {
     );
   }
 
-  const marketRow = await prisma.market.findFirst({
-    where: { symbol: market },
-  });
-  if (!marketRow) {
-    throw new Error(`fill_created: market ${market} not in DB — will retry`);
-  }
+  const marketId = getMarketId(market);
 
   // idempotency guard
   const existing = await prisma.fill.findFirst({
     where: { makerId: makerOrder.id, takerId: takerOrder.id },
   });
-  if (existing) return;
+
+  if (existing) {
+    return;
+  }
 
   await prisma.fill.create({
     data: {
@@ -37,7 +36,7 @@ export async function handleFillCreated(payload: FillCreatedPayload) {
       makerId: makerOrder.id,
       takerId: takerOrder.id,
       userId: takerOrder.userId,
-      marketId: marketRow.id,
+      marketId,
       orderId: takerOrder.id,
     },
   });
