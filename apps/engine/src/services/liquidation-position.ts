@@ -1,34 +1,11 @@
 import type { EngineUser, Fill, Order } from "@perp-v1-boilerplate/commons";
 import { emitEngineEvent } from "@perp-v1-boilerplate/redis/engine-events";
 import { randomUUIDv7 } from "bun";
+import { applyFillToUser } from "@/handlers/apply-fill";
 import { checkLiquidation } from "@/handlers/check-liquidation";
 import type { HandleResult } from "@/handlers/processCommand";
-import { reducePosition } from "@/handlers/reduce-position";
-import { updatePosition } from "@/handlers/update-positions";
 import { orderBooks, users } from "@/store/engine-store";
 import { cancelOrder } from "./cancel-order";
-
-function syncMakerOrderFill(
-  makerUser: EngineUser,
-  orderId: string,
-  matchQty: number,
-) {
-  const makerOrder = makerUser.orders.find((o) => o.orderId === orderId);
-
-  if (!makerOrder) {
-    return;
-  }
-
-  makerOrder.fillQty = Math.min(makerOrder.qty, makerOrder.fillQty + matchQty);
-
-  if (makerOrder.fillQty >= makerOrder.qty) {
-    makerOrder.status = "filled";
-  } else if (makerOrder.fillQty > 0) {
-    makerOrder.status = "partially_filled";
-  } else {
-    makerOrder.status = "open";
-  }
-}
 
 function cancelUserOrdersInMarket(
   userId: string,
@@ -43,14 +20,29 @@ function cancelUserOrdersInMarket(
   );
 
   for (const order of cancellableOrders) {
-    cancelOrder({
-      userId,
-      orderId: order.orderId,
-      marketType,
-    });
+    cancelOrder({ userId, orderId: order.orderId, marketType });
   }
 
   return cancellableOrders.map((order) => order.orderId);
+}
+
+function syncMakerOrderFill(
+  makerUser: EngineUser,
+  orderId: string,
+  matchQty: number,
+) {
+  const makerOrder = makerUser.orders.find((o) => o.orderId === orderId);
+  if (!makerOrder) return;
+
+  makerOrder.fillQty = Math.min(makerOrder.qty, makerOrder.fillQty + matchQty);
+
+  if (makerOrder.fillQty >= makerOrder.qty) {
+    makerOrder.status = "filled";
+  } else if (makerOrder.fillQty > 0) {
+    makerOrder.status = "partially_filled";
+  } else {
+    makerOrder.status = "open";
+  }
 }
 
 export function liquidatePosition(payload: {
@@ -62,29 +54,24 @@ export function liquidatePosition(payload: {
 
   const user = users.get(userId);
   if (!user) {
-    return { ok: false, error: "User doesnot exists" };
+    return { ok: false, error: "User does not exist" };
   }
 
   const position = user.positions.find(
     (p) => p.market === marketType && p.type === positionType,
   );
-
   if (!position) {
-    return { ok: false, error: "position not found" };
+    return { ok: false, error: "Position not found" };
   }
 
   const orderBook = orderBooks[marketType];
   if (!orderBook) {
-    return { ok: false, error: "orderBook not found" };
+    return { ok: false, error: "Orderbook not found" };
   }
 
   const liquidationCheck = checkLiquidation(user, position);
-
   if (!liquidationCheck.shouldLiquidate) {
-    return {
-      ok: false,
-      error: "position is not eligible for liquidation",
-    };
+    return { ok: false, error: "Position is not eligible for liquidation" };
   }
 
   const cancelledOrderIds = cancelUserOrdersInMarket(userId, marketType, [
@@ -95,71 +82,60 @@ export function liquidatePosition(payload: {
   const fills: Fill[] = [];
 
   if (positionType === "LONG") {
+    // user's LONG is being closed (reduced), maker's LONG is being opened
     const bidPriceLevels = Object.keys(orderBook.bids)
       .map(Number)
       .sort((a, b) => b - a);
 
     for (const bidPrice of bidPriceLevels) {
-      if (remainingQty <= 0) {
-        break;
-      }
+      if (remainingQty <= 0) break;
 
       const level = orderBook.bids[bidPrice.toString()];
-      if (!level || level.availableQty <= 0) {
-        continue;
-      }
+      if (!level || level.availableQty <= 0) continue;
 
       for (const openOrder of [...level.openOrders]) {
-        if (remainingQty <= 0) {
-          break;
-        }
+        if (remainingQty <= 0) break;
 
         const availableMakerQty = openOrder.qty - openOrder.filledQty;
-        if (availableMakerQty <= 0) {
-          continue;
-        }
+        if (availableMakerQty <= 0) continue;
 
         const matchQty = Math.min(remainingQty, availableMakerQty);
         const makerUser = users.get(openOrder.userId);
-
-        if (!makerUser) {
-          continue;
-        }
+        if (!makerUser) continue;
 
         const makerOrder = makerUser.orders.find(
           (o) => o.orderId === openOrder.orderId,
         );
-
         const makerFillMargin =
           makerOrder != null
             ? (makerOrder.margin * matchQty) / makerOrder.qty
             : 0;
 
-        const reduceResult = reducePosition({
+        // close the liquidated user's LONG position
+        const takerApply = applyFillToUser({
           user,
           marketType,
-          type: "LONG",
-          closeQty: matchQty,
-          closePrice: bidPrice,
+          incomingType: "SHORT", // closing LONG = applying SHORT fill
+          fillPrice: bidPrice,
+          fillQty: matchQty,
+          fillMargin: 0, // no new margin for liquidation
         });
+        if (!takerApply.ok) continue;
 
-        if (!reduceResult.ok) {
-          return reduceResult;
-        }
-
-        updatePosition({
+        // open/increase maker's LONG position
+        const makerApply = applyFillToUser({
           user: makerUser,
           marketType,
-          type: "LONG",
+          incomingType: "LONG",
           fillPrice: bidPrice,
           fillQty: matchQty,
           fillMargin: makerFillMargin,
         });
+        if (!makerApply.ok) continue;
 
         makerUser.reservedOrderMargin -= makerFillMargin;
-        if (makerUser.reservedOrderMargin < 0) {
+        if (makerUser.reservedOrderMargin < 0)
           makerUser.reservedOrderMargin = 0;
-        }
 
         syncMakerOrderFill(makerUser, openOrder.orderId, matchQty);
 
@@ -177,6 +153,9 @@ export function liquidatePosition(payload: {
         });
 
         openOrder.filledQty += matchQty;
+        openOrder.remainingMargin -= makerFillMargin;
+        if (openOrder.remainingMargin < 0) openOrder.remainingMargin = 0;
+
         level.availableQty -= matchQty;
         remainingQty -= matchQty;
         orderBook.lastTradedPrice = bidPrice;
@@ -193,71 +172,60 @@ export function liquidatePosition(payload: {
       }
     }
   } else {
+    // user's SHORT is being closed (reduced), maker's SHORT is being opened
     const askPriceLevels = Object.keys(orderBook.asks)
       .map(Number)
       .sort((a, b) => a - b);
 
     for (const askPrice of askPriceLevels) {
-      if (remainingQty <= 0) {
-        break;
-      }
+      if (remainingQty <= 0) break;
 
       const level = orderBook.asks[askPrice.toString()];
-      if (!level || level.availableQty <= 0) {
-        continue;
-      }
+      if (!level || level.availableQty <= 0) continue;
 
       for (const openOrder of [...level.openOrders]) {
-        if (remainingQty <= 0) {
-          break;
-        }
+        if (remainingQty <= 0) break;
 
         const availableMakerQty = openOrder.qty - openOrder.filledQty;
-        if (availableMakerQty <= 0) {
-          continue;
-        }
+        if (availableMakerQty <= 0) continue;
 
         const matchQty = Math.min(remainingQty, availableMakerQty);
         const makerUser = users.get(openOrder.userId);
-
-        if (!makerUser) {
-          continue;
-        }
+        if (!makerUser) continue;
 
         const makerOrder = makerUser.orders.find(
           (o) => o.orderId === openOrder.orderId,
         );
-
         const makerFillMargin =
           makerOrder != null
             ? (makerOrder.margin * matchQty) / makerOrder.qty
             : 0;
 
-        const reduceResult = reducePosition({
+        // close the liquidated user's SHORT position
+        const takerApply = applyFillToUser({
           user,
           marketType,
-          type: "SHORT",
-          closeQty: matchQty,
-          closePrice: askPrice,
+          incomingType: "LONG", // closing SHORT = applying LONG fill
+          fillPrice: askPrice,
+          fillQty: matchQty,
+          fillMargin: 0, // no new margin for liquidation
         });
+        if (!takerApply.ok) continue;
 
-        if (!reduceResult.ok) {
-          return reduceResult;
-        }
-
-        updatePosition({
+        // open/increase maker's SHORT position
+        const makerApply = applyFillToUser({
           user: makerUser,
           marketType,
-          type: "SHORT",
+          incomingType: "SHORT",
           fillPrice: askPrice,
           fillQty: matchQty,
           fillMargin: makerFillMargin,
         });
+        if (!makerApply.ok) continue;
 
         makerUser.reservedOrderMargin -= makerFillMargin;
-        if (makerUser.reservedOrderMargin < 0) {
+        if (makerUser.reservedOrderMargin < 0)
           makerUser.reservedOrderMargin = 0;
-        }
 
         syncMakerOrderFill(makerUser, openOrder.orderId, matchQty);
 
@@ -275,6 +243,9 @@ export function liquidatePosition(payload: {
         });
 
         openOrder.filledQty += matchQty;
+        openOrder.remainingMargin -= makerFillMargin;
+        if (openOrder.remainingMargin < 0) openOrder.remainingMargin = 0;
+
         level.availableQty -= matchQty;
         remainingQty -= matchQty;
         orderBook.lastTradedPrice = askPrice;

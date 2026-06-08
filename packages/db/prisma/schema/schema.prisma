@@ -92,9 +92,10 @@ model Order {
 }
 
 model Fill {
-  id    String @id @default(uuid())
-  qty   BigInt
-  price BigInt
+  id     String @id @default(uuid())
+  fillId String @unique
+  qty    BigInt
+  price  BigInt
 
   makerId    String
   makerOrder Order  @relation("makerOrderId", fields: [makerId], references: [id], onDelete: Cascade)

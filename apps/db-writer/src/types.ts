@@ -29,6 +29,7 @@ export type OrderCancelledPayload = {
 };
 
 export type FillCreatedPayload = {
+  fillId: string;
   maker: string;
   taker: string;
   market: string;

@@ -66,6 +66,8 @@ export async function listenForEngineEvents() {
             payload: payload.payload,
             error: payload.error,
           });
+
+          pendingResponse.delete(correlationId);
         }
       }
     } catch (error) {

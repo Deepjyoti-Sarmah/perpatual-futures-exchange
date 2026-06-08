@@ -3,7 +3,7 @@ import { getMarketId } from "../cache/market-cache";
 import type { FillCreatedPayload } from "../types";
 
 export async function handleFillCreated(payload: FillCreatedPayload) {
-  const { makerOrderId, takerOrderId, market, qty, price } = payload;
+  const { fillId, makerOrderId, takerOrderId, market, qty, price } = payload;
 
   const makerOrder = await prisma.order.findUnique({
     where: { id: makerOrderId },
@@ -21,8 +21,8 @@ export async function handleFillCreated(payload: FillCreatedPayload) {
   const marketId = getMarketId(market);
 
   // idempotency guard
-  const existing = await prisma.fill.findFirst({
-    where: { makerId: makerOrder.id, takerId: takerOrder.id },
+  const existing = await prisma.fill.findUnique({
+    where: { fillId },
   });
 
   if (existing) {

@@ -19,8 +19,6 @@ export async function handleLiquidationExecuted(
   }
 
   for (const fill of fills) {
-    await handleFillCreated(fill).catch((err) => {
-      console.error("liquidation fill write failed:", err);
-    });
+    await handleFillCreated(fill);
   }
 }
