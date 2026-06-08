@@ -69,8 +69,7 @@ export async function createOrder(
   if (leverage > MAX_LEVERAGE) {
     return {
       ok: false,
-      error: `Max leverage exceeded.
- allowed=${MAX_LEVERAGE}x got=${leverage.toFixed(2)}x`,
+      error: `Max leverage exceeded. allowed=${MAX_LEVERAGE}x got=${leverage.toFixed(2)}x`,
     };
   }
 
@@ -211,19 +210,9 @@ export async function createOrder(
   );
 
   for (const fill of fills) {
-    const makerUser = users.get(fill.maker);
-    const makerOrder = makerUser?.orders.find(
-      (o) =>
-        o.market === fill.market &&
-        (o.status === "open" ||
-          o.status === "partially_filled" ||
-          o.status === "filled"),
-    );
-
     await emitEngineEvent("fill_created", {
       ...fill,
       takerOrderId: orderId,
-      makerOrderId: makerOrder?.orderId ?? "",
     });
   }
 

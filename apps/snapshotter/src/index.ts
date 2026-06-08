@@ -67,9 +67,10 @@ async function processEvent(id: string, message: Record<string, string>) {
 
 async function replayFromStart() {
   console.log("Replaying events from start...");
-  let startId = "0";
 
   const snapshot = await loadSnapshort();
+  let startId = "0";
+
   if (snapshot) {
     startId = snapshot.lastEventId;
 
@@ -84,15 +85,14 @@ async function replayFromStart() {
     );
   }
 
-  let batchCount = 0;
-
+  // replay without BLOCK so we know when we've caught up (null = no more messages)
   for (; ;) {
     const raw = (await subscriberClient.xRead(
       [{ key: ENGINE_EVENT_STREAM, id: startId }],
-      { BLOCK: 0, COUNT: 500 },
+      { COUNT: 500 },
     )) as RedisReadResponse | null;
 
-    if (!raw) {
+    if (!raw || raw.length === 0) {
       break;
     }
 
@@ -102,26 +102,24 @@ async function replayFromStart() {
         startId = entry.id;
       }
     }
-
-    batchCount++;
-    if (batchCount > 100) {
-      break;
-    }
-
-    await saveSnapshort(lastEventId, users, orderBooks);
-    eventsSinceLastSnapshort = 0;
-
-    console.log(`Replay complete. Last event: ${lastEventId}`);
   }
+
+  // save once after full replay is done
+  await saveSnapshort(lastEventId, users, orderBooks);
+  eventsSinceLastSnapshort = 0;
+  console.log(`Replay complete. Last event: ${lastEventId}`);
 }
 
 async function liveStream() {
-  console.log("Starting live stream consuption...");
+  console.log("Starting live stream consumption...");
+
+  // use a local variable so we always read from the latest processed position
+  let currentId = lastEventId;
 
   for (; ;) {
     try {
       const raw = (await subscriberClient.xRead(
-        [{ key: ENGINE_EVENT_STREAM, id: ">" }],
+        [{ key: ENGINE_EVENT_STREAM, id: currentId }],
         { BLOCK: 5000, COUNT: 50 },
       )) as RedisReadResponse | null;
 
@@ -132,11 +130,11 @@ async function liveStream() {
       for (const stream of raw) {
         for (const entry of stream.messages) {
           await processEvent(entry.id, entry.message);
+          currentId = entry.id;
         }
       }
     } catch (error) {
-      console.error("snapshort live stream error:", error);
-
+      console.error("snapshot live stream error:", error);
       await new Promise((resolve) => setTimeout(resolve, 2000));
     }
   }
@@ -144,7 +142,7 @@ async function liveStream() {
 
 async function main() {
   await connectRedis();
-  console.log("snapshort connected to Redis");
+  console.log("snapshot connected to Redis");
 
   await replayFromStart();
 

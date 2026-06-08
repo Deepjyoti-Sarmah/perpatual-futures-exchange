@@ -43,6 +43,7 @@ function ensureOrderbook(orderBooks: Orderbooks, symbol: string): Orderbook {
 }
 
 export function handleMarketCreated(
+  _users: Map<string, EngineUser>,
   orderBooks: Orderbooks,
   payload: Record<string, unknown>,
 ) {
@@ -52,6 +53,7 @@ export function handleMarketCreated(
 
 export function handleOrderCreated(
   users: Map<string, EngineUser>,
+  _orderBooks: Orderbooks,
   payload: Record<string, unknown>,
 ) {
   const userId = payload.userId as string;
@@ -60,7 +62,7 @@ export function handleOrderCreated(
   const type = payload.type as string;
   const side = payload.side as string;
   const qty = payload.qty as number;
-  const price = payload.price as number | null;
+  const price = (payload.price as number | null) ?? undefined;
   const margin = payload.margin as number;
   const status = payload.status as string;
   const fillQty = payload.fillQty as number;
@@ -89,6 +91,7 @@ export function handleOrderCreated(
 
 export function handleOrderCancelled(
   users: Map<string, EngineUser>,
+  _orderBooks: Orderbooks,
   payload: Record<string, unknown>,
 ) {
   const userId = payload.userId as string;
@@ -96,9 +99,7 @@ export function handleOrderCancelled(
   const releasedMargin = payload.releasedMargin as number;
 
   const user = users.get(userId);
-  if (!user) {
-    return;
-  }
+  if (!user) return;
 
   const order = user.orders.find((o) => o.orderId === orderId);
   if (order) {
@@ -109,6 +110,63 @@ export function handleOrderCancelled(
     0,
     user.reservedOrderMargin - releasedMargin,
   );
+}
+
+function applyFillToPosition(
+  users: Map<string, EngineUser>,
+  userId: string,
+  market: string,
+  incomingType: "LONG" | "SHORT",
+  oppositeType: "LONG" | "SHORT",
+  qty: number,
+  price: number,
+) {
+  const user = users.get(userId);
+  if (!user) return;
+
+  const oppositePosition = user.positions.find(
+    (p) => p.market === market && p.type === oppositeType,
+  );
+
+  let remainingQty = qty;
+
+  if (oppositePosition && oppositePosition.qty > 0) {
+    const reducibleQty = Math.min(oppositePosition.qty, remainingQty);
+    oppositePosition.qty -= reducibleQty;
+    remainingQty -= reducibleQty;
+
+    if (oppositePosition.qty === 0) {
+      user.positions = user.positions.filter(
+        (p) => !(p.market === market && p.type === oppositeType),
+      );
+    }
+  }
+
+  if (remainingQty > 0) {
+    let position = user.positions.find(
+      (p) => p.market === market && p.type === incomingType,
+    );
+
+    if (!position) {
+      position = {
+        market,
+        type: incomingType,
+        qty: 0,
+        margin: 0,
+        liquidationPrice: 0,
+        averagePrice: 0,
+      };
+      user.positions.push(position);
+    }
+
+    const totalQty = position.qty + remainingQty;
+    position.averagePrice =
+      totalQty > 0
+        ? (position.averagePrice * position.qty + price * remainingQty) /
+        totalQty
+        : price;
+    position.qty = totalQty;
+  }
 }
 
 export function handleFillCreated(
@@ -133,49 +191,22 @@ export function handleFillCreated(
   const takerOrder = takerUser?.orders.find((o) => o.orderId === takerOrderId);
 
   if (makerOrder) {
-    makerOrder.fillQty += qty;
+    makerOrder.fillQty = Math.min(makerOrder.qty, makerOrder.fillQty + qty);
     makerOrder.status =
       makerOrder.fillQty >= makerOrder.qty ? "filled" : "partially_filled";
   }
 
   if (takerOrder) {
-    takerOrder.fillQty += qty;
-    takerOrder.status = takerOrder.qty ? "filled" : "partially_filled";
+    takerOrder.fillQty = Math.min(takerOrder.qty, takerOrder.fillQty + qty);
+    takerOrder.status =
+      takerOrder.fillQty >= takerOrder.qty ? "filled" : "partially_filled";
   }
 
   const book = ensureOrderbook(orderBooks, market);
   book.lastTradedPrice = price;
 
-  for (const userId of [longUserId, shortUserId]) {
-    const user = users.get(userId);
-    if (!user) {
-      continue;
-    }
-
-    const positionType = userId === longUserId ? "LONG" : "SHORT";
-    let position = user.positions.find(
-      (p) => p.market === market && p.type === positionType,
-    );
-
-    if (!position) {
-      position = {
-        market,
-        type: positionType,
-        qty: 0,
-        margin: 0,
-        liquidationPrice: 0,
-        averagePrice: 0,
-      };
-      user.positions.push(position);
-    }
-
-    const totalQty = position.qty + qty;
-    position.averagePrice =
-      totalQty > 0
-        ? (position.averagePrice * position.qty + price * qty) / totalQty
-        : price;
-    position.qty = totalQty;
-  }
+  applyFillToPosition(users, longUserId, market, "LONG", "SHORT", qty, price);
+  applyFillToPosition(users, shortUserId, market, "SHORT", "LONG", qty, price);
 }
 
 export function handleLiquidationExecuted(
@@ -187,26 +218,23 @@ export function handleLiquidationExecuted(
   const cancelledOrderIds = payload.cancelledOrderIds as string[];
 
   const user = users.get(userId);
-  if (!user) {
-    return;
-  }
+  if (!user) return;
 
   for (const orderId of cancelledOrderIds) {
     const order = user.orders.find((o) => o.orderId === orderId);
-
     if (order) {
       order.status = "cancelled";
     }
   }
 
   const fills = payload.fills as Array<Record<string, unknown>>;
-
   for (const fill of fills) {
     handleFillCreated(users, orderBooks, fill);
   }
 }
 
 export function handleMarketPriceUpdated(
+  _users: Map<string, EngineUser>,
   orderBooks: Orderbooks,
   payload: Record<string, unknown>,
 ) {
@@ -219,6 +247,7 @@ export function handleMarketPriceUpdated(
 }
 
 export function handleFundingSettled(
+  _users: Map<string, EngineUser>,
   orderBooks: Orderbooks,
   payload: Record<string, unknown>,
 ) {

@@ -35,6 +35,7 @@ export type EngineUser = {
 };
 
 export type Fill = {
+  fillId: string;
   maker: string;
   taker: string;
   market: string;
@@ -42,6 +43,8 @@ export type Fill = {
   price: number;
   long: string;
   short: string;
+  makerOrderId: string;
+  takerOrderId: string;
 };
 
 export type PriceLevel = {

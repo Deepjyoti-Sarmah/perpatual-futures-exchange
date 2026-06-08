@@ -1,5 +1,6 @@
 import type { EngineUser, Fill, Order } from "@perp-v1-boilerplate/commons";
 import { emitEngineEvent } from "@perp-v1-boilerplate/redis/engine-events";
+import { randomUUIDv7 } from "bun";
 import { checkLiquidation } from "@/handlers/check-liquidation";
 import type { HandleResult } from "@/handlers/processCommand";
 import { reducePosition } from "@/handlers/reduce-position";
@@ -163,6 +164,7 @@ export function liquidatePosition(payload: {
         syncMakerOrderFill(makerUser, openOrder.orderId, matchQty);
 
         fills.push({
+          fillId: randomUUIDv7(),
           maker: openOrder.userId,
           taker: user.userId,
           market: marketType,
@@ -170,6 +172,8 @@ export function liquidatePosition(payload: {
           price: bidPrice,
           long: openOrder.userId,
           short: user.userId,
+          makerOrderId: openOrder.orderId,
+          takerOrderId: "",
         });
 
         openOrder.filledQty += matchQty;
@@ -258,6 +262,7 @@ export function liquidatePosition(payload: {
         syncMakerOrderFill(makerUser, openOrder.orderId, matchQty);
 
         fills.push({
+          fillId: randomUUIDv7(),
           maker: openOrder.userId,
           taker: user.userId,
           market: marketType,
@@ -265,6 +270,8 @@ export function liquidatePosition(payload: {
           price: askPrice,
           long: user.userId,
           short: openOrder.userId,
+          makerOrderId: openOrder.orderId,
+          takerOrderId: "",
         });
 
         openOrder.filledQty += matchQty;
